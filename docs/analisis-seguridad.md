@@ -277,6 +277,84 @@ Se mantuvieron como públicos los endpoints bajo la ruta:
 ```text
 /public/**
 
-## 10. Conclusión inicial
+## 10. Mitigación de amenazas mediante la configuración implementada
+
+La configuración de seguridad aplicada en el backend de "LETRAS & PAPELES" permite reducir los riesgos asociados a accesos indebidos, exposición de datos sensibles y ataques comunes contra aplicaciones backend.
+
+### 10.1 Accesos no autorizados
+
+La amenaza de accesos no autorizados se mitiga mediante autenticación obligatoria para todos los endpoints privados. La configuración de Spring Security permite el acceso público únicamente a rutas controladas bajo `/public/**`, mientras que los recursos del backend ubicados bajo `/api/**` requieren credenciales válidas.
+
+Además, se implementó autorización por roles para diferenciar los permisos entre clientes, empleados y gerentes. Esto evita que un usuario autenticado pueda acceder automáticamente a todas las funciones del sistema.
+
+Ejemplo de protección aplicada:
+
+- Un cliente autenticado puede consultar productos.
+- Un cliente autenticado no puede acceder a la administración de usuarios.
+- Un gerente autenticado sí puede acceder a la administración de usuarios.
+
+### 10.2 Exposición de datos sensibles
+
+La exposición de datos sensibles se mitiga evitando que el campo `password` de la entidad `Usuario` sea devuelto en las respuestas JSON de la API.
+
+Para esto se aplicó `@JsonIgnore` sobre el campo `password`, permitiendo que la contraseña siga existiendo internamente para el proceso de autenticación, pero sin ser visible para los consumidores de la API.
+
+Esta medida protege la confidencialidad de las credenciales y reduce el impacto ante una consulta indebida al endpoint de usuarios.
+
+### 10.3 Almacenamiento inseguro de contraseñas
+
+El almacenamiento inseguro de contraseñas se mitiga mediante el uso de `BCryptPasswordEncoder`.
+
+Las contraseñas de los usuarios iniciales se guardan cifradas durante la carga de datos mediante `DataInitializer`. Además, el servicio de usuarios codifica las contraseñas antes de persistirlas, evitando que se almacenen en texto plano.
+
+Esta medida es fundamental porque, aunque alguien accediera a la base de datos, no obtendría directamente las contraseñas originales de los usuarios.
+
+### 10.4 Ataques de inyección SQL
+
+El riesgo de inyección SQL se reduce mediante el uso de Spring Data JPA y repositorios, ya que el acceso a datos se realiza principalmente a través de métodos definidos en interfaces como `UsuarioRepository`, `ProductoRepository`, `RolRepository` y otros repositorios del proyecto.
+
+Al no construir consultas SQL manuales concatenando parámetros ingresados por el usuario, se disminuye la posibilidad de inyección SQL.
+
+De todos modos, esta mitigación depende de mantener buenas prácticas en futuras modificaciones, evitando consultas dinámicas inseguras o concatenación directa de valores externos.
+
+### 10.5 Ataques XSS
+
+El backend no renderiza vistas HTML complejas ni genera páginas dinámicas con datos ingresados por usuarios. Sin embargo, puede recibir y devolver información como nombres de productos, categorías o usuarios.
+
+El riesgo de XSS se considera principalmente asociado a un posible frontend que consuma esta API. Para mitigarlo, el backend debe mantener respuestas JSON controladas, evitar devolver contenido innecesario o sensible y validar adecuadamente los datos que recibe.
+
+En esta implementación inicial, la principal medida aplicada es reducir la exposición de información sensible y mantener la API separada de la generación directa de HTML.
+
+### 10.6 Ataques CSRF
+
+La configuración actual deshabilita CSRF porque el backend se está trabajando como una API REST consumida mediante clientes externos como Postman, utilizando autenticación HTTP Basic para las pruebas de seguridad.
+
+Esta decisión facilita la validación de endpoints protegidos sin depender de formularios web ni tokens CSRF generados por sesión.
+
+Sin embargo, esta configuración debe ser evaluada si el sistema evoluciona hacia una aplicación web con sesiones y formularios tradicionales. En ese escenario, CSRF debería habilitarse o configurarse explícitamente para proteger operaciones como creación, modificación o eliminación de recursos.
+
+### 10.7 Monitoreo y trazabilidad básica
+
+Se incorporaron manejadores personalizados para registrar eventos relevantes de seguridad:
+
+- `CustomAuthenticationEntryPoint`: registra intentos de acceso sin autenticación o con credenciales inválidas.
+- `CustomAccessDeniedHandler`: registra accesos denegados por falta de permisos.
+
+Estos registros permiten identificar intentos sospechosos, rutas atacadas, direcciones IP involucradas y motivos del rechazo. Con esto se mejora la trazabilidad del backend ante eventos de seguridad.
+
+### 10.8 Relación entre amenazas y medidas aplicadas
+
+| Amenaza identificada | Medida aplicada |
+|---|---|
+| Acceso no autorizado | Autenticación obligatoria con Spring Security |
+| Usuario autenticado accediendo a funciones indebidas | Autorización por roles |
+| Exposición de contraseñas | `@JsonIgnore` en el campo `password` |
+| Contraseñas en texto plano | Cifrado con `BCryptPasswordEncoder` |
+| Inyección SQL | Uso de Spring Data JPA y repositorios |
+| XSS | API JSON sin renderizado HTML directo y reducción de exposición de datos |
+| CSRF | Configuración explícita según enfoque de API REST |
+| Falta de monitoreo | Logs personalizados para 401 y 403 |
+
+## 11. Conclusión inicial
 
 El backend cuenta con una base adecuada para implementar seguridad mediante Spring Security, pero requiere completar la estrategia de autenticación y autorización. Dado que el requerimiento de la asignatura solicita una implementación inicial con nombre de usuario y contraseña, la estrategia más adecuada será utilizar Spring Security con usuarios almacenados en base de datos, contraseñas protegidas mediante BCrypt y autorización por roles.
