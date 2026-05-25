@@ -4,6 +4,7 @@ import com.minimarket.security.service.CustomUserDetailsService;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
@@ -27,16 +28,49 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(csrf -> csrf
-                        .ignoringRequestMatchers(PathRequest.toH2Console())
-                        .disable()
-                )
+                .csrf(csrf -> csrf.disable())
                 .headers(headers -> headers
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/public/**").permitAll()
                         .requestMatchers(PathRequest.toH2Console()).permitAll()
+
+                        .requestMatchers(HttpMethod.GET, "/api/productos/**")
+                        .hasAnyRole("CLIENTE", "EMPLEADO", "GERENTE")
+                        .requestMatchers(HttpMethod.POST, "/api/productos/**")
+                        .hasAnyRole("EMPLEADO", "GERENTE")
+                        .requestMatchers(HttpMethod.PUT, "/api/productos/**")
+                        .hasAnyRole("EMPLEADO", "GERENTE")
+                        .requestMatchers(HttpMethod.DELETE, "/api/productos/**")
+                        .hasRole("GERENTE")
+
+                        .requestMatchers(HttpMethod.GET, "/api/categorias/**")
+                        .hasAnyRole("CLIENTE", "EMPLEADO", "GERENTE")
+                        .requestMatchers(HttpMethod.POST, "/api/categorias/**")
+                        .hasAnyRole("EMPLEADO", "GERENTE")
+                        .requestMatchers(HttpMethod.PUT, "/api/categorias/**")
+                        .hasAnyRole("EMPLEADO", "GERENTE")
+                        .requestMatchers(HttpMethod.DELETE, "/api/categorias/**")
+                        .hasRole("GERENTE")
+
+                        .requestMatchers("/api/carrito/**")
+                        .hasAnyRole("CLIENTE", "EMPLEADO", "GERENTE")
+
+                        .requestMatchers(HttpMethod.GET, "/api/ventas/**")
+                        .hasAnyRole("EMPLEADO", "GERENTE")
+                        .requestMatchers(HttpMethod.POST, "/api/ventas/**")
+                        .hasAnyRole("CLIENTE", "EMPLEADO", "GERENTE")
+
+                        .requestMatchers("/api/detalle-ventas/**")
+                        .hasAnyRole("EMPLEADO", "GERENTE")
+
+                        .requestMatchers("/api/inventario/**")
+                        .hasAnyRole("EMPLEADO", "GERENTE")
+
+                        .requestMatchers("/api/usuarios/**")
+                        .hasRole("GERENTE")
+
                         .anyRequest().authenticated()
                 )
                 .httpBasic(Customizer.withDefaults())

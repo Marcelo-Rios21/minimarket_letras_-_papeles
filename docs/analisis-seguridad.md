@@ -258,6 +258,25 @@ La matriz de permisos busca separar las responsabilidades de cada tipo de usuari
 
 Esta separación permite mitigar accesos no autorizados y reducir el impacto de una cuenta comprometida, ya que cada usuario queda limitado a las funciones propias de su rol.
 
-## 9. Conclusión inicial
+## 9. Configuración de autorización implementada
+
+Luego de seleccionar Spring Security como framework de seguridad, se configuró una matriz de autorización basada en roles dentro de la clase `SecurityConfig`.
+
+La autorización se implementó utilizando los roles definidos previamente:
+
+- `ROLE_CLIENTE`
+- `ROLE_EMPLEADO`
+- `ROLE_GERENTE`
+
+En la configuración de Spring Security se utilizaron reglas por endpoint y método HTTP, permitiendo que cada tipo de usuario acceda únicamente a las operaciones correspondientes a su responsabilidad dentro del sistema.
+
+### 9.1 Endpoints públicos
+
+Se mantuvieron como públicos los endpoints bajo la ruta:
+
+```text
+/public/**
+
+## 10. Conclusión inicial
 
 El backend cuenta con una base adecuada para implementar seguridad mediante Spring Security, pero requiere completar la estrategia de autenticación y autorización. Dado que el requerimiento de la asignatura solicita una implementación inicial con nombre de usuario y contraseña, la estrategia más adecuada será utilizar Spring Security con usuarios almacenados en base de datos, contraseñas protegidas mediante BCrypt y autorización por roles.
