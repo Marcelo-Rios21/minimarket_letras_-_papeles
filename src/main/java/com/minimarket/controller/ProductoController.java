@@ -1,6 +1,7 @@
 package com.minimarket.controller;
 
 import com.minimarket.entity.Producto;
+import com.minimarket.security.util.InputValidator;
 import com.minimarket.service.ProductoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +29,7 @@ public class ProductoController {
 
     @PostMapping
     public Producto guardarProducto(@RequestBody Producto producto) {
+        InputValidator.validarTextoSeguro(producto.getNombre(), "nombre");
         return productoService.save(producto);
     }
 
@@ -36,6 +38,7 @@ public class ProductoController {
         Producto productoExistente = productoService.findById(id);
         if (productoExistente != null) {
             producto.setId(id);
+            InputValidator.validarTextoSeguro(producto.getNombre(), "nombre");
             return ResponseEntity.ok(productoService.save(producto));
         }
         return ResponseEntity.notFound().build();

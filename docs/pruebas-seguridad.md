@@ -658,7 +658,232 @@ El backend responde correctamente con `403 Forbidden` cuando un usuario autentic
 
 ---
 
-## 6. Resumen general de resultados
+## 6. Pruebas contra amenazas comunes
+
+### 6.1 Prueba contra SQL Injection en login
+
+Amenaza evaluada:
+
+    ```text
+    SQL Injection
+    ```
+
+Endpoint probado:
+
+    ```text
+    POST /api/auth/login
+    ```
+
+Payload utilizado:
+
+    ```json
+    {
+    "username": "' OR '1'='1",
+    "password": "cualquier"
+    }
+    ```
+
+Comando utilizado:
+
+    ```powershell
+    @'
+    {
+    "username": "' OR '1'='1",
+    "password": "cualquier"
+    }
+    '@ | Set-Content -Encoding UTF8 .\login_sqli.json
+
+    curl.exe -i -X POST http://localhost:8080/api/auth/login `
+    -H "Content-Type: application/json" `
+    --data-binary "@login_sqli.json"
+    ```
+
+Resultado esperado:
+
+    ```text
+    HTTP/1.1 401
+    ```
+
+Resultado obtenido:
+
+    ```text
+    HTTP/1.1 401
+    {"status":401,"error":"Unauthorized","message":"Autenticacion requerida","path":"/api/auth/login"}
+    ```
+
+Conclusión:
+
+El payload de SQL Injection no logró autenticarse ni saltarse el mecanismo de login. Esto confirma que la autenticación no acepta entradas maliciosas como credenciales válidas. Además, el uso de Spring Data JPA y repositorios reduce el riesgo de inyección SQL al evitar consultas construidas mediante concatenación manual de parámetros.
+
+---
+
+### 6.2 Prueba con token JWT inválido
+
+Amenaza evaluada:
+
+    ```text
+    Uso de token inválido o manipulado
+    ```
+
+Endpoint probado:
+
+    ```text
+    GET /api/productos
+    ```
+
+Comando utilizado:
+
+    ```powershell
+    curl.exe -i http://localhost:8080/api/productos -H "Authorization: Bearer token_invalido"
+    ```
+
+Resultado esperado:
+
+    ```text
+    HTTP/1.1 401
+    ```
+
+Resultado obtenido:
+
+    ```text
+    HTTP/1.1 401
+    {"status":401,"error":"Unauthorized","message":"Autenticacion requerida","path":"/api/productos"}
+    ```
+
+Conclusión:
+
+El backend rechaza correctamente solicitudes con un token inválido. Esto confirma que no basta con enviar cualquier valor en el encabezado `Authorization`; el token debe ser válido, estar firmado correctamente y superar la validación del filtro JWT.
+
+---
+
+### 6.3 Prueba CSRF en API stateless
+
+Amenaza evaluada:
+
+    ```text
+    CSRF
+    ```
+
+Endpoint probado:
+
+    ```text
+    POST /api/productos
+    ```
+
+Comando utilizado:
+
+    ```powershell
+    curl.exe -i -X POST http://localhost:8080/api/productos `
+    -H "Content-Type: application/json" `
+    --data-binary "{}"
+    ```
+
+Resultado esperado:
+
+    ```text
+    HTTP/1.1 401
+    ```
+
+Resultado obtenido:
+
+    ```text
+    HTTP/1.1 401
+    {"status":401,"error":"Unauthorized","message":"Autenticacion requerida","path":"/api/productos"}
+    ```
+
+Conclusión:
+
+El backend bloquea correctamente una solicitud de modificación enviada sin token JWT. Esto respalda la configuración stateless del sistema: las operaciones protegidas no dependen de sesiones tradicionales del navegador, sino de un token enviado explícitamente en el encabezado `Authorization`.
+
+---
+
+### 6.4 Prueba XSS en creación de categoría
+
+Amenaza evaluada:
+
+    ```text
+    XSS
+    ```
+
+Endpoint probado:
+
+    ```text
+    POST /api/categorias
+    ```
+
+Payload utilizado:
+
+    ```json
+    {
+    "nombre": "<script>alert('xss')</script>"
+    }
+    ```
+
+Resultado inicial observado:
+
+    ```text
+    HTTP/1.1 200
+    {"id":1,"nombre":"<script>alert('xss')</script>","productos":null}
+    ```
+
+Este resultado evidenció que el backend aceptaba contenido potencialmente peligroso en campos de texto. Para corregirlo, se incorporó una validación básica mediante la clase `InputValidator`, aplicada sobre el campo `nombre` en los controladores de categorías y productos.
+
+Archivos modificados:
+
+    ```text
+    src/main/java/com/minimarket/security/util/InputValidator.java
+    src/main/java/com/minimarket/controller/CategoriaController.java
+    src/main/java/com/minimarket/controller/ProductoController.java
+    ```
+
+Comando utilizado después de la corrección:
+
+    ```powershell
+    @'
+    {
+    "nombre": "<script>alert('xss')</script>"
+    }
+    '@ | Set-Content -Encoding UTF8 .\categoria_xss.json
+
+    $login = @{
+    username = "empleado"
+    password = "empleado123"
+    } | ConvertTo-Json -Compress
+
+    $auth = Invoke-RestMethod `
+    -Uri "http://localhost:8080/api/auth/login" `
+    -Method POST `
+    -ContentType "application/json" `
+    -Body $login
+
+    $token = $auth.token
+
+    curl.exe -i -X POST http://localhost:8080/api/categorias `
+    -H "Content-Type: application/json" `
+    -H "Authorization: Bearer $token" `
+    --data-binary "@categoria_xss.json"
+    ```
+
+Resultado esperado después de la corrección:
+
+    ```text
+    HTTP/1.1 400
+    ```
+
+Resultado obtenido después de la corrección:
+
+    ```text
+    HTTP/1.1 400
+    {"status":400,"error":"Bad Request","message":"El campo nombre contiene caracteres no permitidos","path":"/api/categorias"}
+    ```
+
+Conclusión:
+
+El backend ahora rechaza entradas con contenido potencialmente peligroso, como etiquetas `<script>`. Esta validación reduce el riesgo de almacenar datos que posteriormente puedan generar XSS si son consumidos por un frontend.
+
+---
+
+## 7. Resumen general de resultados
 
 | Prueba | Usuario | Endpoint | Resultado esperado | Resultado obtenido | Estado |
 |---|---|---|---:|---:|---|
@@ -673,10 +898,14 @@ El backend responde correctamente con `403 Forbidden` cuando un usuario autentic
 | Contraseña oculta en JSON | gerente | `GET /api/usuarios` | Sin password visible | Sin password visible | Correcto |
 | Acceso sin autenticación | Sin usuario | `GET /api/productos` | 401 | 401 | Correcto |
 | Acceso con rol insuficiente | cliente | `GET /api/inventario` | 403 | 403 | Correcto |
+| SQL Injection en login | Sin usuario | `POST /api/auth/login` | 401 | 401 | Correcto |
+| Token inválido | Token inválido | `GET /api/productos` | 401 | 401 | Correcto |
+| CSRF / POST sin token | Sin usuario | `POST /api/productos` | 401 | 401 | Correcto |
+| XSS en categoría | empleado | `POST /api/categorias` | 400 | 400 | Correcto |
 
 ---
 
-## 7. Conclusión de pruebas
+## 8. Conclusión de pruebas
 
 Las pruebas realizadas confirman que la configuración de seguridad implementada cumple con los requerimientos principales de autenticación y autorización del backend.
 
@@ -685,3 +914,5 @@ El sistema permite acceder a rutas públicas sin autenticación, bloquea correct
 Además, la autorización basada en roles funciona correctamente. El cliente puede consultar productos, pero no puede acceder a la administración de usuarios ni al inventario. El empleado puede acceder a recursos operativos como inventario. El gerente, que representa el perfil administrador, puede acceder a la administración de usuarios.
 
 También se verificó que el campo `password` no se expone en las respuestas JSON, lo que contribuye a proteger información sensible. Finalmente, las respuestas `401 Unauthorized` y `403 Forbidden` permiten diferenciar entre falta de autenticación y falta de permisos.
+
+Finalmente se realizaron pruebas específicas contra amenazas comunes. El backend rechazó intentos de SQL Injection en el login, tokens JWT inválidos, solicitudes de modificación sin token y entradas con contenido potencialmente peligroso para XSS. En el caso de XSS, la prueba inicial permitió detectar que el backend aceptaba etiquetas `<script>`, por lo que se agregó una validación básica de entrada en categorías y productos. Luego de la corrección, el backend respondió correctamente con `400 Bad Request`.

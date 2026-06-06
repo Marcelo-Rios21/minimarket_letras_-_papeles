@@ -1,6 +1,7 @@
 package com.minimarket.controller;
 
 import com.minimarket.entity.Categoria;
+import com.minimarket.security.util.InputValidator;
 import com.minimarket.service.CategoriaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +29,7 @@ public class CategoriaController {
 
     @PostMapping
     public Categoria guardarCategoria(@RequestBody Categoria categoria) {
+        InputValidator.validarTextoSeguro(categoria.getNombre(), "nombre");
         return categoriaService.save(categoria);
     }
 
@@ -36,6 +38,7 @@ public class CategoriaController {
         Categoria categoriaExistente = categoriaService.findById(id);
         if (categoriaExistente != null) {
             categoria.setId(id);
+            InputValidator.validarTextoSeguro(categoria.getNombre(), "nombre");
             return ResponseEntity.ok(categoriaService.save(categoria));
         }
         return ResponseEntity.notFound().build();
