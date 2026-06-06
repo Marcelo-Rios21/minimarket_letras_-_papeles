@@ -485,100 +485,203 @@ La configuración de Spring Security aplica correctamente las restricciones por 
 
 Usuario utilizado:
 
-    gerente / gerente123
+    ```text
+    gerente / ROLE_GERENTE
+    ```
 
-Endpoint probado:
+    Endpoint probado:
 
+    ```text
     GET /api/usuarios
+    ```
+
+Comando utilizado:
+
+    ```powershell
+    $login = @{
+    username = "gerente"
+    password = "gerente123"
+    } | ConvertTo-Json -Compress
+
+    $auth = Invoke-RestMethod `
+    -Uri "http://localhost:8080/api/auth/login" `
+    -Method POST `
+    -ContentType "application/json" `
+    -Body $login
+
+    $token = $auth.token
+
+    curl.exe -i http://localhost:8080/api/usuarios `
+    -H "Authorization: Bearer $token"
+    ```
 
 Resultado esperado:
 
-La respuesta JSON debe mostrar usuarios y roles, pero no debe mostrar el campo `password`.
+    ```text
+    La respuesta JSON debe mostrar usuarios y roles, pero no debe mostrar el campo password.
+    ```
 
 Resultado obtenido:
 
-La respuesta contiene `id`, `username` y `roles`, pero no expone el campo `password`.
+    ```json
+    [
+    {
+        "id": 1,
+        "username": "cliente",
+        "roles": [
+        {
+            "id": 1,
+            "nombre": "ROLE_CLIENTE"
+        }
+        ]
+    },
+    {
+        "id": 2,
+        "username": "empleado",
+        "roles": [
+        {
+            "id": 2,
+            "nombre": "ROLE_EMPLEADO"
+        }
+        ]
+    },
+    {
+        "id": 3,
+        "username": "gerente",
+        "roles": [
+        {
+            "id": 3,
+            "nombre": "ROLE_GERENTE"
+        }
+        ]
+    }
+    ]
+    ```
 
 Conclusión:
 
-La contraseña se oculta correctamente en las respuestas JSON mediante la configuración aplicada en la entidad `Usuario`.
+La respuesta contiene `id`, `username` y `roles`, pero no expone el campo `password`. Esto confirma que las credenciales no se devuelven en las respuestas JSON del endpoint de usuarios.
 
 ---
 
-## 5. Pruebas de monitoreo básico
+## 5. Pruebas de manejo básico de errores de seguridad
 
-### 5.1 Registro de acceso sin autenticación
+### 5.1 Acceso sin autenticación
 
 Endpoint probado:
 
-    GET /api/usuarios
+    ```text
+    GET /api/productos
+    ```
 
 Usuario utilizado:
 
-    Sin credenciales
+    ```text
+    Sin token JWT
+    ```
+
+Comando utilizado:
+
+    ```powershell
+    curl.exe -i http://localhost:8080/api/productos
+    ```
 
 Resultado esperado:
 
-    401 Unauthorized
+    ```text
+    HTTP/1.1 401
+    ```
 
 Resultado obtenido:
 
-    401 Unauthorized
-
-Además, en consola se registra un evento indicando intento de acceso no autenticado o credenciales inválidas.
+    ```text
+    HTTP/1.1 401
+    {"status":401,"error":"Unauthorized","message":"Autenticacion requerida","path":"/api/productos"}
+    ```
 
 Conclusión:
 
-El sistema registra eventos de autenticación fallida mediante `CustomAuthenticationEntryPoint`.
+El backend responde correctamente con `401 Unauthorized` cuando se intenta acceder a un recurso protegido sin enviar token JWT. Esto permite diferenciar un problema de autenticación, es decir, ausencia o invalidez de credenciales.
 
 ---
 
-### 5.2 Registro de acceso denegado por permisos insuficientes
+### 5.2 Acceso denegado por permisos insuficientes
 
 Usuario utilizado:
 
-    cliente / cliente123
+    ```text
+    cliente / ROLE_CLIENTE
+    ```
 
 Endpoint probado:
 
-    GET /api/usuarios
+    ```text
+    GET /api/inventario
+    ```
+
+Comando utilizado:
+
+    ```powershell
+    $login = @{
+    username = "cliente"
+    password = "cliente123"
+    } | ConvertTo-Json -Compress
+
+    $auth = Invoke-RestMethod `
+    -Uri "http://localhost:8080/api/auth/login" `
+    -Method POST `
+    -ContentType "application/json" `
+    -Body $login
+
+    $token = $auth.token
+
+    curl.exe -i http://localhost:8080/api/inventario `
+    -H "Authorization: Bearer $token"
+    ```
 
 Resultado esperado:
 
-    403 Forbidden
+    ```text
+    HTTP/1.1 403
+    ```
 
 Resultado obtenido:
 
-    403 Forbidden
-
-Además, en consola se registra un evento indicando acceso denegado por permisos insuficientes.
+    ```text
+    HTTP/1.1 403
+    {"status":403,"error":"Forbidden","message":"Acceso denegado","path":"/api/inventario"}
+    ```
 
 Conclusión:
 
-El sistema registra eventos de autorización fallida mediante `CustomAccessDeniedHandler`.
+El backend responde correctamente con `403 Forbidden` cuando un usuario autenticado intenta acceder a un recurso para el cual no tiene permisos suficientes. Esto permite diferenciar un problema de autorización.
 
 ---
 
 ## 6. Resumen general de resultados
 
-| Prueba | Usuario | Resultado esperado | Resultado obtenido | Estado |
-|---|---|---:|---:|---:|
-| Endpoint público `/public/hola` | Sin usuario | 200 | 200 | Correcto |
-| Endpoint privado `/api/usuarios` sin login | Sin usuario | 401 | 401 | Correcto |
-| Cliente consulta productos | cliente | 200 | 200 | Correcto |
-| Cliente accede a usuarios | cliente | 403 | 403 | Correcto |
-| Empleado accede a usuarios | empleado | 403 | 403 | Correcto |
-| Gerente accede a usuarios | gerente | 200 | 200 | Correcto |
-| Contraseña oculta en JSON | gerente | Sin password visible | Sin password visible | Correcto |
-| Log de acceso no autenticado | Sin usuario | Log generado | Log generado | Correcto |
-| Log de acceso denegado | cliente | Log generado | Log generado | Correcto |
+| Prueba | Usuario | Endpoint | Resultado esperado | Resultado obtenido | Estado |
+|---|---|---|---:|---:|---|
+| Endpoint público | Sin usuario | `GET /public/hola` | 200 | 200 | Correcto |
+| Endpoint privado sin token | Sin usuario | `GET /api/productos` | 401 | 401 | Correcto |
+| Login JWT | cliente | `POST /api/auth/login` | Token JWT | Token JWT generado | Correcto |
+| Endpoint privado con token | cliente | `GET /api/productos` | 200 | 200 | Correcto |
+| Cliente accede a usuarios | cliente | `GET /api/usuarios` | 403 | 403 | Correcto |
+| Empleado accede a inventario | empleado | `GET /api/inventario` | 200 | 200 | Correcto |
+| Cliente accede a inventario | cliente | `GET /api/inventario` | 403 | 403 | Correcto |
+| Gerente accede a usuarios | gerente | `GET /api/usuarios` | 200 | 200 | Correcto |
+| Contraseña oculta en JSON | gerente | `GET /api/usuarios` | Sin password visible | Sin password visible | Correcto |
+| Acceso sin autenticación | Sin usuario | `GET /api/productos` | 401 | 401 | Correcto |
+| Acceso con rol insuficiente | cliente | `GET /api/inventario` | 403 | 403 | Correcto |
 
 ---
 
 ## 7. Conclusión de pruebas
 
-Las pruebas realizadas confirman que la configuración de seguridad implementada cumple con los requerimientos principales de la actividad. El backend exige autenticación para recursos privados, diferencia permisos según roles, protege información sensible y registra eventos relevantes de seguridad.
+Las pruebas realizadas confirman que la configuración de seguridad implementada cumple con los requerimientos principales de autenticación y autorización del backend.
 
-La autenticación con nombre de usuario y contraseña funciona correctamente mediante HTTP Basic. Además, la autorización por roles impide que usuarios con permisos limitados accedan a funciones administrativas, como la gestión de usuarios.
+El sistema permite acceder a rutas públicas sin autenticación, bloquea correctamente los recursos privados cuando no se envía token JWT, genera tokens mediante el endpoint de login y permite acceder a endpoints protegidos cuando se envía un token válido en el encabezado `Authorization`.
 
-También se confirmó que el campo `password` no se expone en las respuestas JSON, lo que contribuye a proteger datos sensibles del sistema.
+Además, la autorización basada en roles funciona correctamente. El cliente puede consultar productos, pero no puede acceder a la administración de usuarios ni al inventario. El empleado puede acceder a recursos operativos como inventario. El gerente, que representa el perfil administrador, puede acceder a la administración de usuarios.
+
+También se verificó que el campo `password` no se expone en las respuestas JSON, lo que contribuye a proteger información sensible. Finalmente, las respuestas `401 Unauthorized` y `403 Forbidden` permiten diferenciar entre falta de autenticación y falta de permisos.
