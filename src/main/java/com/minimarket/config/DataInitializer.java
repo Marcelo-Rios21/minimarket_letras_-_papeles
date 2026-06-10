@@ -34,9 +34,35 @@ public class DataInitializer implements CommandLineRunner {
         Rol rolEmpleado = crearRolSiNoExiste("ROLE_EMPLEADO");
         Rol rolGerente = crearRolSiNoExiste("ROLE_GERENTE");
 
-        crearUsuarioSiNoExiste("cliente", "cliente123", rolCliente);
-        crearUsuarioSiNoExiste("empleado", "empleado123", rolEmpleado);
-        crearUsuarioSiNoExiste("gerente", "gerente123", rolGerente);
+        crearUsuarioSiNoExiste(
+                "cliente",
+                "cliente123",
+                "Cliente",
+                "Demo",
+                "cliente@minimarket.cl",
+                "Av. Cliente 123",
+                rolCliente
+        );
+
+        crearUsuarioSiNoExiste(
+                "empleado",
+                "empleado123",
+                "Empleado",
+                "Demo",
+                "empleado@minimarket.cl",
+                "Av. Empleado 456",
+                rolEmpleado
+        );
+
+        crearUsuarioSiNoExiste(
+                "gerente",
+                "gerente123",
+                "Gerente",
+                "Demo",
+                "gerente@minimarket.cl",
+                "Av. Administracion 789",
+                rolGerente
+        );
     }
 
     private Rol crearRolSiNoExiste(String nombreRol) {
@@ -48,13 +74,25 @@ public class DataInitializer implements CommandLineRunner {
                 });
     }
 
-    private void crearUsuarioSiNoExiste(String username, String password, Rol rol) {
+    private void crearUsuarioSiNoExiste(
+            String username,
+            String password,
+            String nombre,
+            String apellido,
+            String email,
+            String direccion,
+            Rol rol
+    ) {
         boolean usuarioExiste = usuarioRepository.findByUsername(username).isPresent();
 
         if (!usuarioExiste) {
             Usuario usuario = new Usuario();
             usuario.setUsername(username);
             usuario.setPassword(passwordEncoder.encode(password));
+            usuario.setNombre(nombre);
+            usuario.setApellido(apellido);
+            usuario.setEmail(email);
+            usuario.setDireccion(direccion);
 
             Set<Rol> roles = new HashSet<>();
             roles.add(rol);
