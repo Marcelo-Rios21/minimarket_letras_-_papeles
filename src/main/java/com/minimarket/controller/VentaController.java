@@ -2,7 +2,7 @@ package com.minimarket.controller;
 
 import com.minimarket.entity.Venta;
 import com.minimarket.service.VentaService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,8 +12,11 @@ import java.util.List;
 @RequestMapping("/api/ventas")
 public class VentaController {
 
-    @Autowired
-    private VentaService ventaService;
+    private final VentaService ventaService;
+
+    public VentaController(VentaService ventaService) {
+        this.ventaService = ventaService;
+    }
 
     @GetMapping
     public List<Venta> listarVentas() {
@@ -27,7 +30,12 @@ public class VentaController {
     }
 
     @PostMapping
-    public Venta guardarVenta(@RequestBody Venta venta) {
-        return ventaService.save(venta);
+    public ResponseEntity<?> guardarVenta(@RequestBody Venta venta) {
+        try {
+            Venta ventaRegistrada = ventaService.registrarVenta(venta);
+            return ResponseEntity.status(HttpStatus.CREATED).body(ventaRegistrada);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
     }
 }
