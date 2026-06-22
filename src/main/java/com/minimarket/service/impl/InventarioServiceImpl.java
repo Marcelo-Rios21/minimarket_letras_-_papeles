@@ -26,7 +26,7 @@ public class InventarioServiceImpl implements InventarioService {
 
     @Override
     public Inventario save(Inventario inventario) {
-        return inventarioRepository.save(inventario);
+        return registrarMovimiento(inventario);
     }
 
     @Override
@@ -37,5 +37,42 @@ public class InventarioServiceImpl implements InventarioService {
     @Override
     public List<Inventario> findByProductoId(Long productoId) {
         return inventarioRepository.findByProductoId(productoId);
+    }
+
+    @Override
+    public Inventario registrarMovimiento(Inventario inventario) {
+        validarMovimiento(inventario);
+
+        String tipoMovimientoNormalizado = inventario.getTipoMovimiento().trim();
+        inventario.setTipoMovimiento(tipoMovimientoNormalizado);
+
+        return inventarioRepository.save(inventario);
+    }
+
+    private void validarMovimiento(Inventario inventario) {
+        if (inventario == null) {
+            throw new IllegalArgumentException("El movimiento de inventario es obligatorio");
+        }
+
+        if (inventario.getProducto() == null) {
+            throw new IllegalArgumentException("El producto asociado al inventario es obligatorio");
+        }
+
+        if (inventario.getTipoMovimiento() == null || inventario.getTipoMovimiento().trim().isEmpty()) {
+            throw new IllegalArgumentException("El tipo de movimiento es obligatorio");
+        }
+
+        if (!esTipoMovimientoValido(inventario.getTipoMovimiento())) {
+            throw new IllegalArgumentException("El tipo de movimiento debe ser Entrada o Salida");
+        }
+
+        if (inventario.getCantidad() == null || inventario.getCantidad() <= 0) {
+            throw new IllegalArgumentException("La cantidad debe ser mayor a cero");
+        }
+    }
+
+    private boolean esTipoMovimientoValido(String tipoMovimiento) {
+        String valor = tipoMovimiento.trim();
+        return valor.equalsIgnoreCase("Entrada") || valor.equalsIgnoreCase("Salida");
     }
 }
