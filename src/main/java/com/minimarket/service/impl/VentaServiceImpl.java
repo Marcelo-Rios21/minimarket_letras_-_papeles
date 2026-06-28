@@ -10,6 +10,7 @@ import com.minimarket.repository.VentaRepository;
 import com.minimarket.service.UsuarioService;
 import com.minimarket.service.VentaService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.List;
@@ -50,6 +51,7 @@ public class VentaServiceImpl implements VentaService {
     }
 
     @Override
+    @Transactional
     public Venta registrarVenta(Venta venta) {
         validarVentaBase(venta);
 
