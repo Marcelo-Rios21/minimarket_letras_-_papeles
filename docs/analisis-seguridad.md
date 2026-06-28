@@ -2,280 +2,201 @@
 
 ## 1. Contexto del backend analizado
 
-El backend proporcionado corresponde a una aplicación desarrollada con Spring Boot para el sistema "MiniMarket Plus". La aplicación mantiene una arquitectura por capas, separando controladores, servicios, repositorios, entidades y configuración de seguridad.
+El backend corresponde a una aplicacion Spring Boot para el sistema "MiniMarket Plus". La aplicacion mantiene una arquitectura por capas, separando controladores, servicios, repositorios, entidades y configuracion de seguridad.
 
-Durante la revisión del proyecto se identificó que el backend ya incorpora Spring Security como framework de seguridad, además de entidades relacionadas con usuarios y roles. También se verificó que el proyecto cuenta con autenticación basada en JWT, configuración stateless, servicio UserDetailsService, cifrado de contraseñas con BCrypt y reglas de autorización por roles. Por lo tanto, el análisis actual se enfoca en validar, documentar y reforzar la seguridad existente de acuerdo con los requerimientos de MiniMarket Plus.
+El sistema incorpora autenticacion mediante JWT y autorizacion por roles con Spring Security. Para efectos funcionales, se consideran tres perfiles principales: cliente, cajero y administrador. En el codigo estos perfiles se representan mediante los roles `ROLE_CLIENTE`, `ROLE_EMPLEADO` y `ROLE_GERENTE`.
+
+La seguridad del backend se orienta a proteger operaciones criticas asociadas a productos, inventario, ventas, carrito y usuarios. Las reglas de acceso permiten diferenciar que acciones puede realizar cada perfil, evitando que usuarios sin permisos ejecuten funciones administrativas u operativas sensibles.
 
 ## 2. Componentes relevantes de seguridad existentes
 
 En el backend se identifican los siguientes componentes relacionados con seguridad:
 
 - Entidad `Usuario`, utilizada para representar las cuentas del sistema.
-- Entidad `Rol`, utilizada para representar los permisos o niveles de acceso.
+- Entidad `Rol`, utilizada para representar los niveles de acceso.
 - Repositorio `UsuarioRepository`, utilizado para buscar usuarios registrados.
 - Repositorio `RolRepository`, utilizado para gestionar roles.
-- Clase `CustomUserDetails`, encargada de adaptar la entidad `Usuario` al modelo de autenticación de Spring Security.
+- Clase `CustomUserDetails`, encargada de adaptar la entidad `Usuario` al modelo de autenticacion de Spring Security.
 - Clase `CustomUserDetailsService`, encargada de cargar usuarios desde la base de datos.
-- Clase `SecurityConfig`, donde se define la configuración principal de Spring Security.
+- Clase `SecurityConfig`, donde se define la configuracion principal de Spring Security y la matriz de permisos por endpoint.
 - Clase `JwtUtil`, encargada de generar, firmar, validar y leer tokens JWT.
-- Clase `JwtAuthenticationFilter`, encargada de interceptar las solicitudes protegidas y validar el token recibido en el encabezado `Authorization`.
-- DTOs `LoginRequest`, `RegisterRequest` y `AuthResponse`, utilizados para el flujo de autenticación y registro.
+- Clase `JwtAuthenticationFilter`, encargada de interceptar solicitudes protegidas y validar el token recibido en el encabezado `Authorization`.
+- DTOs `LoginRequest`, `RegisterRequest` y `AuthResponse`, utilizados para el flujo de autenticacion y registro.
 - Controlador `AuthController`, encargado de exponer los endpoints de login y registro.
-- Bean `BCryptPasswordEncoder`, utilizado para proteger contraseñas mediante cifrado unidireccional.
+- Bean `BCryptPasswordEncoder`, utilizado para proteger contrasenas mediante cifrado unidireccional.
 
-Estos componentes demuestran que la aplicación ya posee una base funcional de autenticación y autorización mediante Spring Security y JWT. La tarea principal consiste en validar que la configuración esté correctamente aplicada, documentar el funcionamiento, probar los accesos por rol y reforzar la protección frente a amenazas comunes.
+Estos componentes permiten implementar un esquema de seguridad stateless, donde cada solicitud protegida debe incluir un token JWT valido y donde el acceso final depende del rol asociado al usuario autenticado.
 
-## 3. Puntos críticos identificados
+## 3. Puntos criticos identificados
 
-A partir de la revisión del backend se identifican los siguientes puntos críticos:
+A partir de la revision del backend se identifican los siguientes puntos criticos:
 
-1. La aplicación utiliza Spring Security con configuración stateless y autenticación mediante JWT.
-2. Existen entidades `Usuario` y `Rol`, junto con reglas de autorización por tipo de usuario.
-3. El sistema requiere proteger operaciones sensibles como gestión de usuarios, productos, ventas, carrito e inventario.
-4. El backend puede exponer información sensible si devuelve directamente entidades completas, especialmente en el caso de usuarios con contraseña.
-5. Es necesario asegurar que las contraseñas se almacenen usando `BCryptPasswordEncoder` y no en texto plano.
-6. Existen usuarios iniciales para probar autenticación y autorización: cliente, empleado y gerente.
-7. JWT se encuentra implementado mediante `JwtUtil` y `JwtAuthenticationFilter`, por lo que corresponde mantener esta estrategia y documentarla correctamente.
-8. Existe manejo básico de errores de autenticación y autorización, pero aún se recomienda fortalecer el registro de eventos sospechosos, como intentos fallidos de autenticación, accesos denegados y operaciones sensibles.
+1. La aplicacion utiliza Spring Security con configuracion stateless y autenticacion mediante JWT.
+2. Existen entidades `Usuario` y `Rol`, junto con reglas de autorizacion por tipo de usuario.
+3. El sistema requiere proteger operaciones sensibles como gestion de productos, ventas, inventario, carrito y usuarios.
+4. La modificacion de productos debe quedar restringida al administrador.
+5. La generacion de ventas debe quedar restringida al cajero.
+6. Los movimientos de inventario deben quedar restringidos a cajero y administrador.
+7. Los endpoints protegidos deben responder `401 Unauthorized` cuando no se envia token JWT.
+8. Los endpoints protegidos deben responder `403 Forbidden` cuando el usuario autenticado no posee el rol requerido.
+9. El backend puede exponer informacion sensible si devuelve entidades completas sin control, especialmente en el caso de usuarios.
+10. Es necesario mantener las contrasenas protegidas mediante `BCryptPasswordEncoder`.
+11. JWT se encuentra implementado mediante `JwtUtil` y `JwtAuthenticationFilter`, por lo que corresponde mantener esta estrategia y validarla mediante pruebas.
+12. Se recomienda fortalecer progresivamente la trazabilidad de eventos sensibles, como intentos fallidos de autenticacion, accesos denegados y operaciones criticas.
 
 ## 4. Necesidades de seguridad del cliente
 
-Para el caso del sistema "MiniMarket Plus", el cliente requiere proteger los componentes backend frente a accesos indebidos y amenazas comunes. La aplicación administra información asociada a usuarios, roles, productos, carrito, ventas e inventario, por lo que se deben aplicar controles de autenticación, autorización, protección de datos y validación de solicitudes mediante JWT.
+Para el sistema "MiniMarket Plus", el backend debe proteger los recursos asociados a usuarios, roles, productos, categorias, carrito, ventas, detalle de ventas e inventario. La aplicacion administra informacion operativa y datos de usuarios, por lo que requiere controles claros de autenticacion, autorizacion y proteccion de datos.
 
-Las principales necesidades son:
+Las principales necesidades de seguridad son:
 
 - Permitir que solo usuarios autenticados accedan a recursos privados.
-- Diferenciar permisos entre clientes, empleados y gerentes.
-- Proteger credenciales mediante almacenamiento seguro de contraseñas.
-- Evitar exposición de datos sensibles en respuestas de la API.
-- Restringir operaciones administrativas solo a usuarios autorizados.
-- Registrar eventos relevantes de seguridad para apoyar la trazabilidad.
-- Mantener una configuración clara y coherente con el alcance inicial del proyecto.
+- Diferenciar permisos entre cliente, cajero y administrador.
+- Proteger credenciales mediante almacenamiento seguro de contrasenas.
+- Evitar exposicion de datos sensibles en respuestas de la API.
+- Restringir la modificacion de productos al administrador.
+- Restringir la generacion de ventas al cajero.
+- Restringir los movimientos de inventario a cajero y administrador.
+- Mantener una configuracion stateless mediante JWT.
+- Registrar eventos relevantes de seguridad, como accesos denegados e intentos fallidos.
 
 ## 5. Amenazas potenciales identificadas
 
-A partir del análisis del backend proporcionado y de los requerimientos de la asignatura, se identifican las siguientes amenazas potenciales que pueden afectar al sistema "MiniMarket Plus":
+A partir del analisis del backend y de los requerimientos de la actividad, se identifican las siguientes amenazas potenciales para el sistema "MiniMarket Plus":
 
 ### 5.1 Accesos no autorizados
 
-El backend expone endpoints asociados a usuarios, productos, categorías, carrito, ventas, detalles de venta e inventario. Si estos recursos no se protegen correctamente, un usuario sin permisos podría acceder a información o ejecutar operaciones que no le corresponden.
+El backend expone endpoints asociados a productos, categorias, carrito, ventas, detalle de ventas, inventario y usuarios. Si estos recursos no se protegen correctamente, un usuario podria consultar informacion o ejecutar operaciones que no le corresponden.
 
-Esta amenaza puede impactar directamente en la confidencialidad e integridad del sistema, ya que permitiría consultar o modificar información sensible, como datos de usuarios, ventas registradas o movimientos de inventario.
+Esta amenaza se mitiga mediante Spring Security, autenticacion JWT y reglas de autorizacion por rol. Los endpoints protegidos deben responder `401 Unauthorized` cuando no existe token y `403 Forbidden` cuando el rol autenticado no posee permisos suficientes.
 
-### 5.2 Manipulación o uso indebido de tokens JWT
+### 5.2 Escalamiento de privilegios
 
-Dado que el backend utiliza autenticación mediante JWT, una amenaza relevante es el uso de tokens inválidos, expirados, mal formados o manipulados. Si el token no se valida correctamente, un atacante podría intentar acceder a recursos protegidos sin una autenticación legítima.
+Un usuario autenticado podria intentar ejecutar operaciones superiores a su perfil. Por ejemplo, un cliente podria intentar modificar productos o registrar inventario, o un administrador podria intentar ejecutar una operacion reservada al flujo operativo del cajero.
 
-Esta amenaza se mitiga mediante la firma del token, la validación de expiración, la extracción segura del usuario autenticado y la verificación del token en cada solicitud protegida mediante el filtro JWT.
+Esta amenaza se mitiga separando responsabilidades: el cliente queda limitado al flujo de consulta y carrito, el cajero registra ventas y movimientos de inventario, y el administrador gestiona productos y usuarios.
 
-### 5.3 Exposición de datos sensibles
+### 5.3 Manipulacion o uso indebido de tokens JWT
 
-La entidad `Usuario` contiene información sensible, especialmente el campo `password`. Si el backend devuelve directamente entidades completas en las respuestas de la API, existe el riesgo de exponer contraseñas u otros datos internos que no deberían ser visibles para los clientes del sistema.
+Dado que el backend utiliza JWT, existe el riesgo de recibir tokens invalidos, expirados, mal formados o manipulados. Si el token no se valida correctamente, un usuario podria intentar acceder a recursos protegidos sin autenticacion legitima.
 
-Esta amenaza afecta principalmente la confidencialidad de los datos personales y credenciales de acceso.
+Esta amenaza se mitiga mediante firma del token, validacion de expiracion, extraccion segura del usuario autenticado y verificacion del token en cada solicitud protegida mediante `JwtAuthenticationFilter`.
 
-### 5.4 Almacenamiento inseguro de contraseñas
+### 5.4 Exposicion de datos sensibles
 
-Aunque el proyecto ya define un `BCryptPasswordEncoder`, es necesario asegurar que las contraseñas sean cifradas antes de almacenarse en la base de datos. Si una contraseña se guarda en texto plano, un acceso indebido a la base de datos permitiría comprometer directamente las cuentas de los usuarios.
+La entidad `Usuario` contiene informacion sensible, especialmente el campo `password`. Si el backend devuelve entidades completas sin control, existe riesgo de exponer datos internos o credenciales.
 
-Esta amenaza afecta la seguridad de la autenticación y puede facilitar accesos no autorizados.
+Esta amenaza se reduce evitando la serializacion del campo de contrasena y manteniendo la recomendacion de utilizar DTOs para respuestas de API.
 
-### 5.5 Falta de autorización por roles
+### 5.5 Almacenamiento inseguro de contrasenas
 
-El sistema define usuarios y roles, pero la seguridad debe garantizar que cada tipo de usuario solo acceda a las funciones que le corresponden. Sin una configuración clara de autorización, un cliente podría acceder a funciones administrativas, o un empleado podría ejecutar acciones reservadas para un gerente.
+Si las contrasenas se almacenaran en texto plano, un acceso indebido a la base de datos podria comprometer directamente las cuentas de los usuarios.
 
-Esta amenaza afecta la separación de responsabilidades dentro del sistema.
+Esta amenaza se mitiga mediante `BCryptPasswordEncoder`, que permite almacenar contrasenas de forma no reversible.
 
-### 5.6 Acceso indebido a recursos de otros usuarios
+### 5.6 Acceso indebido a recursos ajenos
 
-Además del control por roles, el backend debe considerar el riesgo de acceso indebido a recursos ajenos. Por ejemplo, un cliente podría intentar modificar el identificador de una venta, carrito o usuario para acceder a información que no le corresponde.
+Ademas del control por roles, el sistema debe considerar que un usuario podria intentar modificar identificadores de recursos, como carrito, venta o usuario, para acceder a informacion que no le corresponde.
 
-Esta amenaza se conoce como IDOR y puede afectar la confidencialidad de datos personales y transaccionales. Para mitigarla, no basta con validar el rol del usuario; también se debe validar la relación entre el recurso solicitado y el usuario autenticado cuando corresponda.
+Esta amenaza se reconoce como una mejora futura, recomendandose incorporar validaciones de propiedad del recurso en servicios o controladores.
 
-### 5.7 Ataques CSRF
+## 6. Roles y responsabilidades
 
-En aplicaciones web tradicionales basadas en sesiones y cookies, puede existir riesgo de ataques CSRF, donde un atacante intenta forzar acciones no deseadas aprovechando una sesión activa del usuario.
-
-En este backend, el riesgo se reduce porque la autenticación se basa en JWT y en una arquitectura stateless. Las solicitudes protegidas deben incluir explícitamente el token en el encabezado `Authorization`, por lo que una petición sin token válido debe ser rechazada por el backend.
-
-### 5.8 Ataques XSS
-
-Aunque el backend no presenta vistas HTML complejas, puede recibir y devolver datos ingresados por usuarios, como nombres de productos, categorías o usuarios. Si estos datos luego son mostrados por un frontend sin validación o escape adecuado, podrían facilitar ataques XSS.
-
-Esta amenaza se mitiga principalmente validando entradas y evitando devolver contenido inseguro.
-
-### 5.9 Inyección SQL
-
-El proyecto utiliza Spring Data JPA y repositorios, lo que reduce el riesgo de inyección SQL al evitar la construcción manual de consultas inseguras. Sin embargo, la amenaza debe considerarse porque una mala práctica futura, como concatenar parámetros directamente en consultas, podría introducir vulnerabilidades.
-
-Esta amenaza afecta la integridad y confidencialidad de los datos almacenados.
-
-### 5.10 Falta de monitoreo y trazabilidad
-
-Actualmente existe un manejo básico de errores de autenticación y autorización, pero no se observa un sistema completo de monitoreo o auditoría para intentos fallidos, accesos denegados u operaciones sensibles. Sin registros suficientes de seguridad, sería difícil detectar actividad sospechosa o investigar incidentes.
-
-Esta amenaza afecta la capacidad de auditoría y respuesta ante incidentes.
-
-## 6. Tipos de usuarios y requerimientos de seguridad
-
-Para implementar una estrategia de seguridad adecuada en el backend de "MiniMarket Plus", se definen tres tipos principales de usuarios: clientes, empleados y gerentes. Cada uno tiene un nivel de acceso distinto según sus responsabilidades dentro del sistema.
+Para implementar una estrategia de autorizacion coherente, el backend define tres perfiles funcionales principales: cliente, cajero y administrador. En el codigo estos perfiles se representan mediante los roles `ROLE_CLIENTE`, `ROLE_EMPLEADO` y `ROLE_GERENTE`.
 
 ### 6.1 Cliente
 
-El cliente representa al usuario final que interactúa con el sistema para consultar productos, gestionar su carrito y realizar compras.
+El cliente representa al usuario final del sistema. Su acceso se orienta al flujo de compra y consulta.
 
-Permisos esperados:
+Responsabilidades permitidas:
 
-- Consultar productos y categorías disponibles.
+- Consultar productos y categorias disponibles.
 - Gestionar su propio carrito.
-- Registrar compras o ventas asociadas a su cuenta.
-- Consultar información relacionada con sus propias operaciones.
+- Acceder solo a operaciones asociadas a su perfil.
 
-Nivel de seguridad requerido:
+Restricciones principales:
 
-El cliente debe autenticarse con nombre de usuario y contraseña mediante el endpoint de login. Una vez autenticado, debe utilizar el token JWT recibido para acceder a los recursos protegidos. Su acceso debe estar limitado a operaciones propias, evitando que pueda consultar o modificar información de otros usuarios, inventario interno o datos administrativos.
+- No puede modificar productos.
+- No puede registrar movimientos de inventario.
+- No puede generar ventas desde el endpoint protegido de ventas.
+- No puede administrar usuarios ni roles.
 
-### 6.2 Empleado
+### 6.2 Cajero
 
-El empleado representa al usuario interno encargado de apoyar la operación diaria del minimarket.
+El cajero corresponde al perfil operativo del sistema. En el codigo se representa mediante `ROLE_EMPLEADO`.
 
-Permisos esperados:
+Responsabilidades permitidas:
 
-- Consultar productos y categorías.
-- Gestionar productos.
-- Registrar o revisar ventas.
-- Gestionar movimientos de inventario.
-- Revisar carritos o ventas cuando sea necesario para la operación.
+- Consultar productos y categorias.
+- Registrar ventas.
+- Consultar ventas cuando corresponda a la operacion.
+- Registrar movimientos de inventario.
+- Registrar o actualizar categorias segun las reglas operativas del backend.
+- Revisar informacion operativa necesaria para la atencion.
 
-Nivel de seguridad requerido:
+Restricciones principales:
 
-El empleado requiere autenticación obligatoria mediante JWT y autorización mediante rol. Su acceso debe permitir operaciones operativas, pero no debería incluir administración completa de usuarios o roles.
+- No puede modificar productos.
+- No puede eliminar productos.
+- No puede administrar usuarios ni roles.
+- No puede ejecutar funciones administrativas reservadas al gerente.
 
-### 6.3 Gerente
+### 6.3 Administrador
 
-El gerente representa al usuario con mayor nivel de responsabilidad dentro del sistema. Para efectos del caso MiniMarket Plus, este rol cumple la función de administrador del backend.
+El administrador corresponde al perfil con mayor nivel de control dentro del backend. En el codigo se representa mediante `ROLE_GERENTE`.
 
-Permisos esperados:
+Responsabilidades permitidas:
 
-- Gestionar usuarios.
+- Administrar usuarios.
 - Gestionar roles.
-- Administrar productos, ventas e inventario.
-- Revisar información general del sistema.
-- Acceder a operaciones administrativas sensibles.
+- Crear, editar y eliminar productos.
+- Registrar y consultar movimientos de inventario.
+- Consultar informacion operativa del sistema.
+- Eliminar recursos permitidos segun la matriz de seguridad.
 
-Nivel de seguridad requerido:
+Restricciones principales:
 
-El gerente requiere el nivel de seguridad más alto dentro de la implementación. Sus credenciales deben estar protegidas mediante BCrypt y su acceso debe estar limitado mediante autorización por rol y validación del token JWT, evitando que otros usuarios puedan ejecutar funciones administrativas.
+- No genera ventas en la pauta estricta, ya que la creacion de ventas queda reservada al cajero.
+- Debe operar bajo autenticacion JWT y autorizacion por rol.
 
-### 6.4 Requerimientos generales de seguridad
+La separacion de responsabilidades permite reducir riesgos de acceso indebido y evita que un unico perfil concentre todas las operaciones criticas del sistema.
 
-A partir de los tipos de usuarios definidos, se establecen los siguientes requerimientos de seguridad:
+## 7. Comparacion de estrategias de autenticacion
 
-1. Todo recurso privado del backend debe requerir autenticación mediante token JWT válido.
-2. Las contraseñas deben almacenarse cifradas mediante `BCryptPasswordEncoder`.
-3. Los endpoints deben protegerse según el rol del usuario autenticado.
-4. El token JWT debe ser validado en cada solicitud protegida mediante un filtro de seguridad.
-5. Los datos sensibles, como contraseñas, no deben exponerse en respuestas JSON.
-6. Las operaciones administrativas deben estar restringidas al rol de gerente.
-7. Las operaciones de inventario y productos deben restringirse a empleados y gerentes.
-8. Las operaciones de carrito deben estar disponibles para usuarios autenticados con rol de cliente.
-9. La aplicación debe registrar eventos relevantes de seguridad, como accesos denegados o intentos fallidos.
-10. La configuración debe ser coherente con una API REST stateless basada en JWT.
+Para definir la estrategia de autenticacion del backend se consideran distintas alternativas aplicables a un sistema REST como "MiniMarket Plus".
 
-## 7. Comparación de estrategias de autenticación
-
-Para seleccionar una estrategia de autenticación adecuada, se comparan distintas alternativas disponibles en el contexto de Spring Security y aplicaciones backend.
-
-| Estrategia | Descripción | Ventajas | Desventajas | Aplicabilidad al proyecto |
+| Estrategia | Descripcion | Ventajas | Desventajas | Aplicabilidad al proyecto |
 |---|---|---|---|---|
-| Autenticación en memoria | Los usuarios se definen directamente en la configuración de seguridad. | Fácil de implementar y útil para pruebas rápidas. | No es adecuada para producción, no permite administrar usuarios reales desde base de datos y no escala para un sistema con clientes, empleados y gerentes. | Baja. Puede servir para pruebas, pero no responde a las necesidades reales del sistema. |
-| Autenticación con base de datos usando JPA | Los usuarios y roles se almacenan en la base de datos y se cargan mediante `UserDetailsService`. | Se integra bien con el backend actual, permite administrar usuarios reales y aprovecha las entidades `Usuario` y `Rol` existentes. | Requiere configurar correctamente el cifrado de contraseñas y la autorización por roles. | Alta. Es la estrategia más coherente con el estado actual del proyecto. |
-| Autenticación JDBC | Spring Security consulta usuarios y roles directamente desde tablas mediante JDBC. | Es una estrategia válida y soportada por Spring Security. | El proyecto ya utiliza Spring Data JPA, por lo que usar JDBC directo sería menos coherente con la arquitectura existente. | Media. Es posible, pero no es la opción más alineada con el backend recibido. |
-| LDAP / LDAPS | La autenticación se realiza contra un directorio corporativo externo, como Active Directory u OpenLDAP. En LDAPS, la comunicación se cifra mediante SSL/TLS. | Permite centralizar usuarios corporativos, especialmente empleados y administradores, evitando duplicar credenciales en cada sistema. LDAPS agrega protección en tránsito para credenciales y datos sensibles. | Requiere infraestructura externa, configuración de certificados, servidor de directorio y administración centralizada de usuarios. | Media. Es una alternativa relevante para un entorno empresarial, pero no se implementa directamente en esta entrega porque el backend base no dispone de un servidor LDAPS configurado. |
-| JWT | La autenticación se realiza mediante tokens enviados por el cliente en cada solicitud protegida. | Es adecuada para APIs REST stateless, aplicaciones con frontend separado y clientes móviles. Además, permite evitar sesiones tradicionales en el servidor. | Requiere una implementación correcta de generación, firma, expiración y validación de tokens. También exige proteger adecuadamente la clave secreta. | Alta. Es la estrategia seleccionada porque el proyecto ya cuenta con `JwtUtil`, `JwtAuthenticationFilter`, login mediante `AuthController` y configuración stateless en `SecurityConfig`. |
-| IDaaS / OAuth2 / SSO | La autenticación se delega a un proveedor externo de identidad, como un servicio en la nube para gestión de usuarios, inicio de sesión único, autenticación multifactor y control centralizado de accesos. | Mejora la interoperabilidad, permite escalar la gestión de identidades, facilita MFA y reduce la necesidad de construir todo el sistema de identidad desde cero. | Requiere integración con un proveedor externo, configuración de aplicaciones, manejo de flujos OAuth2/OIDC y dependencia de un servicio externo. | Media. Es una alternativa adecuada para una evolución futura de MiniMarket Plus, pero no se implementa directamente en esta entrega por alcance e infraestructura disponible. |
+| Autenticacion en memoria | Los usuarios se definen directamente en la configuracion de seguridad. | Facil de implementar y util para pruebas rapidas. | No es adecuada para produccion ni para administrar usuarios reales. | Baja. Puede servir para pruebas iniciales, pero no responde al alcance del sistema. |
+| Autenticacion con base de datos usando JPA | Los usuarios y roles se almacenan en la base de datos y se cargan mediante `UserDetailsService`. | Se integra con la arquitectura actual y permite administrar usuarios reales. | Requiere configurar correctamente cifrado de contrasenas y reglas de autorizacion. | Alta. Es coherente con las entidades `Usuario` y `Rol` del proyecto. |
+| Autenticacion JDBC | Spring Security consulta usuarios y roles directamente desde tablas mediante JDBC. | Es una estrategia valida y soportada por Spring Security. | El proyecto ya utiliza Spring Data JPA, por lo que seria menos coherente. | Media. Es posible, pero no es la opcion mas alineada con el backend. |
+| LDAP / LDAPS | La autenticacion se realiza contra un directorio corporativo externo. | Centraliza usuarios corporativos y LDAPS protege la comunicacion. | Requiere infraestructura externa, certificados y administracion adicional. | Media. Es relevante para una evolucion empresarial, pero no se implementa en esta entrega. |
+| JWT | La autenticacion se realiza mediante tokens enviados por el cliente en cada solicitud protegida. | Es adecuada para APIs REST stateless y permite separar frontend y backend. | Requiere proteger la clave secreta y validar correctamente firma y expiracion. | Alta. Es la estrategia utilizada por el backend. |
+| IDaaS / OAuth2 / SSO | La autenticacion se delega a un proveedor externo de identidad. | Permite inicio de sesion unico, MFA y administracion centralizada. | Requiere integracion con servicios externos y configuracion adicional. | Media. Es una mejora futura posible. |
 
-### 7.1 Consideración de LDAPS e IDaaS
+La estrategia seleccionada es autenticacion con usuarios almacenados en base de datos, roles gestionados mediante JPA y tokens JWT para proteger las solicitudes HTTP. Esta combinacion mantiene una arquitectura REST stateless y permite aplicar autorizacion por rol sobre endpoints criticos.
 
-Además de las estrategias locales de autenticación, se analizaron mecanismos externos de identidad como LDAPS e IDaaS.
+## 8. Estrategia seleccionada y matriz de permisos
 
-LDAPS resulta relevante en escenarios donde MiniMarket Plus necesite autenticar empleados o administradores contra un directorio corporativo centralizado, como Active Directory u OpenLDAP. A diferencia de LDAP tradicional, LDAPS cifra la comunicación mediante SSL/TLS, evitando que credenciales y datos sensibles viajen expuestos por la red.
+La estrategia de seguridad del backend se basa en Spring Security, JWT, `UserDetailsService`, `BCryptPasswordEncoder` y reglas de autorizacion declaradas en `SecurityConfig`.
 
-IDaaS, por su parte, permite delegar la gestión de identidad a un proveedor externo. Este enfoque es útil cuando una organización requiere inicio de sesión único, autenticación multifactor, administración centralizada de usuarios, integración con múltiples sistemas e interoperabilidad con servicios externos.
+Los perfiles funcionales definidos son:
 
-En esta implementación no se integró un servidor LDAPS ni un proveedor IDaaS real, ya que el backend proporcionado no incluye dicha infraestructura externa y el requerimiento funcional directo solicita JWT para una API REST stateless. Sin embargo, ambas alternativas se consideran relevantes para una evolución futura del sistema.
-
-### 7.2 Estrategia más adecuada
-
-Considerando el estado del backend y los requerimientos de la asignatura, la estrategia más adecuada es utilizar autenticación con nombre de usuario y contraseña para el inicio de sesión, junto con generación de JWT para proteger las solicitudes posteriores en una arquitectura stateless.
-
-Esta decisión se justifica porque el proyecto ya cuenta con entidades `Usuario` y `Rol`, repositorios asociados, una clase `CustomUserDetailsService` preparada para cargar usuarios desde la base de datos, configuración de Spring Security, generación de tokens mediante `JwtUtil` y validación de solicitudes mediante `JwtAuthenticationFilter`.
-
-LDAPS e IDaaS se consideran alternativas válidas para escenarios empresariales con autenticación externa, directorios corporativos, inicio de sesión único o autenticación multifactor. Sin embargo, para esta entrega se selecciona JWT como mecanismo funcional principal porque responde directamente al requerimiento de trabajar con una API REST stateless y no depende de infraestructura externa adicional.
-
-La estrategia seleccionada permite cumplir los objetivos principales:
-
-- Autenticar usuarios mediante nombre de usuario y contraseña.
-- Generar un token JWT después de un login correcto.
-- Validar el token JWT en cada solicitud protegida.
-- Almacenar contraseñas de forma segura usando `BCryptPasswordEncoder`.
-- Diferenciar permisos mediante roles.
-- Proteger endpoints sensibles del backend.
-- Mantener una solución stateless coherente con la arquitectura REST del proyecto.
-
-## 8. Estrategia seleccionada y matriz inicial de permisos
-
-Luego de comparar las estrategias de autenticación disponibles, se selecciona como estrategia principal el uso de Spring Security con autenticación mediante nombre de usuario y contraseña, generación de tokens JWT, usuarios almacenados en base de datos, contraseñas protegidas con `BCryptPasswordEncoder` y autorización basada en roles.
-
-Esta estrategia se considera la más adecuada para el backend de "MiniMarket Plus" porque se alinea con la estructura existente del proyecto y con los requerimientos de la asignatura. La aplicación ya cuenta con entidades `Usuario` y `Rol`, repositorios JPA, clases de integración con Spring Security, configuración stateless, generación de tokens mediante `JwtUtil` y validación de solicitudes mediante `JwtAuthenticationFilter`.
-
-No se selecciona autenticación en memoria porque solo es útil para pruebas simples y no permite administrar usuarios reales. JWT se selecciona como parte central de la solución, ya que permite proteger una API REST stateless, evita mantener sesiones tradicionales en el servidor y se ajusta a los requerimientos de autenticación segura del proyecto.
-
-LDAPS e IDaaS se analizan como alternativas de integración con servicios externos de identidad. LDAPS sería apropiado si MiniMarket Plus contara con un directorio corporativo para autenticar empleados y administradores. IDaaS sería apropiado si la empresa buscara inicio de sesión único, autenticación multifactor y administración centralizada de identidades en la nube. En esta entrega no se implementan directamente porque requieren infraestructura externa adicional, pero se consideran alternativas relevantes para mejorar interoperabilidad y escalabilidad en una evolución futura.
-
-### 8.1 Framework seleccionado
-
-El framework seleccionado es `Spring Security`, debido a que se integra directamente con Spring Boot y permite implementar autenticación, autorización, protección de rutas, manejo de usuarios, roles y cifrado de contraseñas.
-
-Además, el proyecto ya incluye la dependencia de Spring Security y una configuración mediante la clase `SecurityConfig`, donde se definen rutas públicas, rutas protegidas, manejo stateless, filtro JWT, reglas por rol y codificación de contraseñas. Por lo tanto, la tarea principal consiste en validar, documentar y probar correctamente esta configuración.
-
-### 8.2 Método de autenticación seleccionado
-
-El método seleccionado es autenticación con nombre de usuario y contraseña para el inicio de sesión, junto con generación y validación de tokens JWT para proteger las solicitudes posteriores.
-
-La implementación se realiza utilizando:
-
-- `Usuario` como entidad principal de autenticación.
-- `Rol` como entidad para definir niveles de acceso.
-- `UsuarioRepository` para buscar usuarios por nombre de usuario.
-- `CustomUserDetailsService` para cargar usuarios desde base de datos.
-- `CustomUserDetails` para adaptar los usuarios del sistema al modelo de Spring Security.
-- `BCryptPasswordEncoder` para proteger las contraseñas antes de almacenarlas.
-- `AuthController` para exponer los endpoints de registro e inicio de sesión.
-- `LoginRequest`, `RegisterRequest` y `AuthResponse` como DTOs del flujo de autenticación.
-- `JwtUtil` para generar, firmar, validar y leer tokens JWT.
-- `JwtAuthenticationFilter` para validar el token en cada solicitud protegida.
-- Reglas de autorización por endpoint dentro de `SecurityConfig`.
-
-### 8.3 Roles definidos
-
-Se definen tres roles principales:
-
-| Rol | Tipo de usuario | Descripción |
+| Rol tecnico | Perfil funcional | Descripcion |
 |---|---|---|
-| `ROLE_CLIENTE` | Cliente | Usuario final que consulta productos, administra su carrito y realiza compras. |
-| `ROLE_EMPLEADO` | Empleado | Usuario interno que gestiona productos, ventas e inventario. |
-| `ROLE_GERENTE` | Gerente / Administrador | Usuario administrativo con permisos para gestionar usuarios, roles y operaciones críticas. |
+| `ROLE_CLIENTE` | Cliente | Usuario final que consulta productos y utiliza el flujo de carrito. |
+| `ROLE_EMPLEADO` | Cajero | Usuario operativo que registra ventas y movimientos de inventario. |
+| `ROLE_GERENTE` | Administrador | Usuario administrativo con permisos para gestionar usuarios y productos. |
 
-### 8.4 Matriz inicial de permisos
+La matriz de permisos queda definida de la siguiente forma:
 
-| Recurso / Endpoint | Cliente | Empleado | Gerente |
+| Recurso / Endpoint | Cliente | Cajero | Administrador |
 |---|---:|---:|---:|
-| `/api/auth/**` | Público | Público | Público |
-| `/public/**` | Público | Público | Público |
+| `/api/auth/**` | Publico | Publico | Publico |
+| `/public/**` | Publico | Publico | Publico |
 | `GET /api/productos/**` | Permitido | Permitido | Permitido |
-| `POST /api/productos/**` | Denegado | Permitido | Permitido |
-| `PUT /api/productos/**` | Denegado | Permitido | Permitido |
+| `POST /api/productos/**` | Denegado | Denegado | Permitido |
+| `PUT /api/productos/**` | Denegado | Denegado | Permitido |
 | `DELETE /api/productos/**` | Denegado | Denegado | Permitido |
 | `GET /api/categorias/**` | Permitido | Permitido | Permitido |
 | `POST /api/categorias/**` | Denegado | Permitido | Permitido |
@@ -283,122 +204,104 @@ Se definen tres roles principales:
 | `DELETE /api/categorias/**` | Denegado | Denegado | Permitido |
 | `/api/carrito/**` | Permitido | Permitido | Permitido |
 | `GET /api/ventas/**` | Denegado | Permitido | Permitido |
-| `POST /api/ventas/**` | Permitido | Permitido | Permitido |
+| `POST /api/ventas/**` | Denegado | Permitido | Denegado |
 | `/api/detalle-ventas/**` | Denegado | Permitido | Permitido |
 | `/api/inventario/**` | Denegado | Permitido | Permitido |
 | `/api/usuarios/**` | Denegado | Denegado | Permitido |
 
-### 8.5 Justificación de la matriz de permisos
+Esta matriz separa las responsabilidades principales del sistema. El cliente mantiene acceso al flujo de consulta y carrito. El cajero concentra las operaciones de venta e inventario. El administrador gestiona productos y usuarios, sin intervenir en la generacion directa de ventas, ya que esa operacion corresponde al flujo operativo del cajero.
 
-La matriz de permisos busca separar las responsabilidades de cada tipo de usuario. El cliente solo debe acceder a funciones relacionadas con la consulta de productos, carrito y creación de compras. El empleado requiere permisos operativos para administrar productos, categorías, ventas e inventario, pero no debería tener control total sobre usuarios. El gerente representa el perfil administrador del sistema y posee el mayor nivel de acceso, por lo que puede administrar usuarios y realizar operaciones críticas.
+## 9. Configuracion de autorizacion implementada
 
-Esta separación permite mitigar accesos no autorizados y reducir el impacto de una cuenta comprometida, ya que cada usuario queda limitado a las funciones propias de su rol.
+La configuracion de autorizacion se define en la clase `SecurityConfig`, donde se establece una politica stateless y se deshabilitan mecanismos de sesion tradicionales, HTTP Basic y formulario de login. La autenticacion se realiza mediante JWT, validado en cada solicitud protegida por `JwtAuthenticationFilter`.
 
-## 9. Configuración de autorización implementada
+La configuracion permite acceso publico a:
 
-Luego de seleccionar Spring Security como framework de seguridad, se configuró una matriz de autorización basada en roles dentro de la clase `SecurityConfig`. Esta configuración permite definir rutas públicas, rutas protegidas, reglas por método HTTP y restricciones según el rol del usuario autenticado.
+- `/api/auth/**`
+- `/public/**`
+- `/error`
+- Consola H2 para el entorno de pruebas
 
-La autorización se implementó utilizando los roles definidos previamente:
+El resto de endpoints se protege mediante reglas por metodo HTTP y rol. Las principales restricciones son:
 
-- `ROLE_CLIENTE`
-- `ROLE_EMPLEADO`
-- `ROLE_GERENTE`
+- La consulta de productos esta disponible para cliente, cajero y administrador.
+- La creacion, edicion y eliminacion de productos queda reservada al administrador.
+- Los movimientos de inventario quedan permitidos para cajero y administrador.
+- La generacion de ventas queda reservada al cajero.
+- La administracion de usuarios queda reservada al administrador.
+- Los accesos sin token JWT reciben `401 Unauthorized`.
+- Los accesos con rol insuficiente reciben `403 Forbidden`.
 
-En la configuración de Spring Security se utilizaron reglas por endpoint y método HTTP, permitiendo que cada tipo de usuario acceda únicamente a las operaciones correspondientes a su responsabilidad dentro del sistema. Además, la configuración utiliza una arquitectura stateless, por lo que cada solicitud protegida debe incluir un token JWT válido.
+Esta configuracion permite validar la identidad del usuario mediante token JWT y, posteriormente, verificar si el rol asociado tiene permisos para ejecutar la operacion solicitada.
 
-### 9.1 Endpoints públicos
+## 10. Mitigacion de amenazas mediante la configuracion implementada
 
-Se mantienen como públicos los endpoints necesarios para iniciar sesión, registrar usuarios y realizar pruebas básicas de disponibilidad.
-
-```text
-/api/auth/**
-/public/**
-/error
-/h2-console/**
-```
-
-## 10. Mitigación de amenazas mediante la configuración implementada
-
-La configuración de seguridad aplicada en el backend de "MiniMarket Plus" permite reducir los riesgos asociados a accesos indebidos, exposición de datos sensibles y ataques comunes contra aplicaciones backend.
+La configuracion de seguridad del backend permite mitigar las amenazas principales identificadas para "MiniMarket Plus".
 
 ### 10.1 Accesos no autorizados
 
-La amenaza de accesos no autorizados se mitiga mediante autenticación obligatoria para todos los endpoints privados. La configuración de Spring Security permite el acceso público únicamente a rutas controladas como `/api/auth/**` y `/public/**`, mientras que los recursos protegidos del backend requieren un token JWT válido.
+Los endpoints privados requieren autenticacion mediante token JWT. Si una solicitud no incluye token, el sistema responde con `401 Unauthorized`.
 
-Además, el uso de JWT permite mantener una arquitectura stateless. Esto significa que el backend no mantiene sesiones tradicionales en el servidor, sino que valida el token enviado por el cliente en cada solicitud protegida.
+Esta medida protege recursos como productos, inventario, ventas, carrito, detalle de ventas y usuarios, evitando que usuarios no autenticados ejecuten operaciones internas del backend.
 
-Ejemplo de protección aplicada:
+### 10.2 Accesos con rol insuficiente
 
-- Un cliente autenticado puede consultar productos.
-- Un cliente autenticado no puede acceder a la administración de usuarios.
-- Un gerente autenticado sí puede acceder a la administración de usuarios.
+La autorizacion se aplica mediante reglas por rol en `SecurityConfig`. Cuando un usuario autenticado intenta ejecutar una operacion no permitida para su perfil, el sistema responde con `403 Forbidden`.
 
-### 10.2 Exposición de datos sensibles
+Ejemplos validados:
 
-La exposición de datos sensibles se mitiga evitando que el campo `password` de la entidad `Usuario` sea devuelto en las respuestas JSON de la API.
+- Un cliente no puede modificar productos.
+- Un cajero no puede modificar productos.
+- Un cliente no puede registrar movimientos de inventario.
+- Un cliente no puede generar ventas.
+- Un administrador no genera ventas en la pauta estricta, ya que esa operacion queda reservada al cajero.
 
-Para esto se aplicó `@JsonIgnore` sobre el campo `password`, permitiendo que la contraseña siga existiendo internamente para el proceso de autenticación, pero sin ser visible para los consumidores de la API.
+### 10.3 Proteccion de productos
 
-Esta medida protege la confidencialidad de las credenciales y reduce el impacto ante una consulta indebida al endpoint de usuarios.
+La modificacion de productos se restringe al administrador. Esto protege la integridad del catalogo, evitando que perfiles operativos o clientes alteren precios, stock o informacion del producto.
 
-### 10.3 Almacenamiento inseguro de contraseñas
+Permisos principales:
 
-El almacenamiento inseguro de contraseñas se mitiga mediante el uso de `BCryptPasswordEncoder`.
+- Cliente: consulta productos.
+- Cajero: consulta productos.
+- Administrador: crea, edita y elimina productos.
 
-Las contraseñas de los usuarios iniciales se guardan cifradas durante la carga de datos mediante `DataInitializer`. Además, el servicio de usuarios codifica las contraseñas antes de persistirlas, evitando que se almacenen en texto plano.
+### 10.4 Proteccion de inventario
 
-Esta medida es fundamental porque, aunque alguien accediera a la base de datos, no obtendría directamente las contraseñas originales de los usuarios.
+Los movimientos de inventario quedan restringidos a cajero y administrador. Esto permite controlar entradas y salidas de productos, evitando que clientes manipulen registros internos de stock.
 
-### 10.4 Ataques de inyección SQL
+Ademas, la capa de servicio valida que cada movimiento este asociado a un producto, tenga cantidad valida y utilice un tipo de movimiento permitido.
 
-El riesgo de inyección SQL se reduce mediante el uso de Spring Data JPA y repositorios, ya que el acceso a datos se realiza principalmente a través de métodos definidos en interfaces como `UsuarioRepository`, `ProductoRepository`, `RolRepository` y otros repositorios del proyecto.
+### 10.5 Proteccion de ventas
 
-Al no construir consultas SQL manuales concatenando parámetros ingresados por el usuario, se disminuye la posibilidad de inyección SQL.
+La generacion de ventas queda reservada al cajero. Esta separacion permite diferenciar al cliente asociado a la compra del usuario operativo que registra la venta en el sistema.
 
-De todos modos, esta mitigación depende de mantener buenas prácticas en futuras modificaciones, evitando consultas dinámicas inseguras o concatenación directa de valores externos.
+La capa de servicio valida que la venta tenga usuario, detalles, productos existentes, cantidades validas y stock suficiente. Tambien calcula el total y descuenta stock durante el registro de la venta.
 
-### 10.5 Ataques XSS
+### 10.6 Proteccion de contrasenas
 
-El backend no renderiza vistas HTML complejas ni genera páginas dinámicas con datos ingresados por usuarios. Sin embargo, puede recibir y devolver información como nombres de productos, categorías o usuarios.
+Las contrasenas se protegen mediante `BCryptPasswordEncoder`, evitando almacenarlas en texto plano. Esto reduce el impacto de una eventual exposicion de la base de datos.
 
-El riesgo de XSS se considera principalmente asociado a un posible frontend que consuma esta API. Para mitigarlo, el backend debe mantener respuestas JSON controladas, evitar devolver contenido innecesario o sensible y validar adecuadamente los datos que recibe.
+### 10.7 Proteccion de tokens JWT
 
-En esta implementación inicial, la principal medida aplicada es reducir la exposición de información sensible y mantener la API separada de la generación directa de HTML.
+El token JWT se genera durante el login y se valida en cada solicitud protegida. El filtro `JwtAuthenticationFilter` verifica el encabezado `Authorization`, extrae el usuario, valida el token y registra la autenticacion en el contexto de seguridad.
 
-### 10.6 Ataques CSRF
+### 10.8 Reduccion de exposicion de datos sensibles
 
-La configuración actual deshabilita CSRF porque el backend funciona como una API REST stateless protegida mediante JWT. En este enfoque, el servidor no mantiene sesiones tradicionales basadas en cookies, sino que cada solicitud protegida debe incluir explícitamente el token en el encabezado `Authorization`.
+El backend evita exponer directamente la contrasena del usuario mediante control de serializacion. Como mejora futura, se recomienda ampliar el uso de DTOs para separar las entidades internas de las respuestas publicas de la API.
 
-Esta decisión es coherente con el uso de JWT, ya que una solicitud sin token válido debe ser rechazada por el backend. Por lo tanto, el riesgo CSRF se reduce en comparación con aplicaciones web tradicionales basadas en sesiones y formularios.
+### 10.9 Consistencia en el registro de ventas
 
-Sin embargo, si el sistema evoluciona hacia una aplicación web que utilice cookies de sesión, formularios tradicionales o autenticación basada en navegador, la protección CSRF debería ser evaluada nuevamente.
+El registro de ventas se ejecuta de forma transaccional. Esto permite que el descuento de stock y el guardado de la venta se comporten como una sola operacion, reduciendo el riesgo de inconsistencias si ocurre un error durante el proceso.
 
-### 10.7 Monitoreo y trazabilidad básica
+## 11. Conclusion tecnica
 
-Se incorporaron manejadores personalizados para controlar respuestas ante eventos relevantes de seguridad:
+El backend de "MiniMarket Plus" cuenta con una base de seguridad adecuada para proteger operaciones criticas mediante Spring Security, JWT, BCrypt y autorizacion por roles.
 
-- `CustomAuthenticationEntryPoint`: registra intentos de acceso sin autenticación o con credenciales inválidas.
-- `CustomAccessDeniedHandler`: registra accesos denegados por falta de permisos.
+La configuracion distingue tres perfiles funcionales: cliente, cajero y administrador. Esta separacion permite limitar el acceso segun la responsabilidad de cada usuario dentro del sistema. El cliente conserva acceso al flujo de consulta y carrito, el cajero ejecuta operaciones de venta e inventario, y el administrador gestiona productos y usuarios.
 
-Estos manejadores permiten diferenciar errores de autenticación y autorización, mejorando la respuesta del backend frente a accesos no autorizados. Como mejora futura, se recomienda ampliar estos controles con registros de auditoría más detallados.
+Las pruebas automatizadas confirman el comportamiento esperado de autenticacion y autorizacion. Se valida que las solicitudes sin token sean rechazadas con `401 Unauthorized`, que los usuarios con rol insuficiente reciban `403 Forbidden`, y que los roles autorizados puedan ejecutar las operaciones permitidas.
 
-### 10.8 Relación entre amenazas y medidas aplicadas
+La suite completa del proyecto se ejecuta correctamente con 73 pruebas aprobadas. Ademas, el reporte JaCoCo evidencia cobertura general del backend y una cobertura destacada en los paquetes asociados a seguridad.
 
-| Amenaza identificada | Medida aplicada |
-|---|---|
-| Acceso no autorizado | Autenticación obligatoria con Spring Security y JWT |
-| Usuario autenticado accediendo a funciones indebidas | Autorización por roles |
-| Manipulación o uso indebido de token JWT | Firma, expiración y validación del token en cada solicitud protegida |
-| Acceso a recursos de otros usuarios | Validación de permisos por rol y recomendación de validar propiedad del recurso |
-| Exposición de contraseñas | `@JsonIgnore` en el campo `password` |
-| Contraseñas en texto plano | Cifrado con `BCryptPasswordEncoder` |
-| Inyección SQL | Uso de Spring Data JPA y repositorios |
-| XSS | API JSON sin renderizado HTML directo y reducción de exposición de datos |
-| CSRF | Uso de API REST stateless con token JWT en encabezado `Authorization` |
-| Falta de monitoreo | Logs personalizados para 401 y 403 |
-
-## 11. Conclusión inicial
-
-El backend cuenta con una base adecuada de seguridad mediante Spring Security, autenticación con JWT, contraseñas protegidas con BCrypt y autorización basada en roles. Esta estrategia permite proteger los endpoints privados, diferenciar permisos entre clientes, empleados y gerentes, y mantener una arquitectura REST stateless.
-
-A partir del análisis realizado, se concluye que la prioridad no es reemplazar la seguridad existente, sino validarla, documentarla y reforzarla mediante pruebas de acceso, pruebas contra amenazas comunes y actualización de la documentación técnica.
+Como mejoras futuras se recomienda ampliar el uso de DTOs, agregar control de propiedad de recursos, reforzar la trazabilidad de eventos sensibles y aumentar la cobertura de pruebas sobre controladores adicionales.
