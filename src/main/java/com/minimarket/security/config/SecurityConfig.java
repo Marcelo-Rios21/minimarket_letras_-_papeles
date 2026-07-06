@@ -64,11 +64,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/public/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**").permitAll()
                         .requestMatchers(PathRequest.toH2Console()).permitAll()
 
                         // Productos:
-                        // La consulta de productos está disponible para usuarios autenticados.
-                        // La creación, edición y eliminación quedan restringidas al administrador.
+                        // La consulta de productos estÃƒÆ’Ã‚Â¡ disponible para usuarios autenticados.
+                        // La creaciÃƒÆ’Ã‚Â³n, ediciÃƒÆ’Ã‚Â³n y eliminaciÃƒÆ’Ã‚Â³n quedan restringidas al administrador.
                         .requestMatchers(HttpMethod.GET, "/api/productos/**")
                         .hasAnyRole("CLIENTE", "EMPLEADO", "GERENTE")
                         .requestMatchers(HttpMethod.POST, "/api/productos/**")
@@ -78,7 +79,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/productos/**")
                         .hasRole("GERENTE")
 
-                        // Categorías:
+                        // CategorÃƒÆ’Ã‚Â­as:
                         .requestMatchers(HttpMethod.GET, "/api/categorias/**")
                         .hasAnyRole("CLIENTE", "EMPLEADO", "GERENTE")
                         .requestMatchers(HttpMethod.POST, "/api/categorias/**")
