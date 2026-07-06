@@ -1,6 +1,6 @@
 # MiniMarket Plus - Backend Spring Boot
 
-Backend desarrollado en Spring Boot para el sistema MiniMarket Plus, orientado a la gestion de productos, inventario, carritos de compra, ventas y usuarios con autenticacion y autorizacion por roles.
+Backend desarrollado en Spring Boot para el sistema MiniMarket Plus, orientado a la gestion de productos, inventario, carritos de compra, ventas y usuarios con autenticacion JWT, autorizacion por roles y documentacion tecnica mediante OpenAPI.
 
 ## 1. Tecnologias utilizadas
 
@@ -16,10 +16,13 @@ Backend desarrollado en Spring Boot para el sistema MiniMarket Plus, orientado a
 - Mockito
 - MockMvc
 - JaCoCo
+- springdoc-openapi
+- Swagger UI
 
 ## 2. Estructura principal del proyecto
 
 src/main/java/com/minimarket
+
 - config
 - controller
 - entity
@@ -28,9 +31,17 @@ src/main/java/com/minimarket
 - service
 
 src/test/java/com/minimarket
+
 - entity
 - security
 - service
+
+docs
+
+- analisis-seguridad.md
+- pruebas-seguridad.md
+- testing-unitario.md
+- openapi-minimarket-plus.json
 
 ## 3. Roles del sistema
 
@@ -62,16 +73,68 @@ POST /api/auth/login
 
 Ejemplo de body:
 
-{
-  "username": "empleado",
-  "password": "empleado123"
-}
+    {
+      "username": "empleado",
+      "password": "empleado123"
+    }
 
 El token recibido se debe enviar en las solicitudes protegidas:
 
-Authorization: Bearer <token>
+    Authorization: Bearer <token>
 
-## 6. Matriz resumida de permisos
+## 6. Documentacion OpenAPI y Swagger UI
+
+El backend utiliza springdoc-openapi para generar documentacion tecnica de los endpoints REST.
+
+Con la aplicacion ejecutandose, se puede acceder a la interfaz interactiva de Swagger UI en:
+
+    http://localhost:8080/swagger-ui.html
+
+La especificacion OpenAPI en formato JSON se encuentra disponible en:
+
+    http://localhost:8080/v3/api-docs
+
+Ademas, la especificacion exportada se mantiene en el proyecto en la siguiente ruta:
+
+    docs/openapi-minimarket-plus.json
+
+La documentacion OpenAPI incluye descripciones de operaciones, parametros, codigos de respuesta y ejemplos de cuerpos JSON para los controladores documentados.
+
+Controladores documentados con mayor detalle:
+
+- ProductoController
+- CarritoController
+
+Endpoints principales documentados:
+
+| Recurso | Metodo | Ruta | Descripcion |
+|---|---|---|---|
+| Productos | GET | /api/productos | Lista los productos registrados |
+| Productos | GET | /api/productos/{id} | Obtiene un producto por ID |
+| Productos | POST | /api/productos | Crea un nuevo producto |
+| Productos | PUT | /api/productos/{id} | Actualiza un producto existente |
+| Productos | DELETE | /api/productos/{id} | Elimina un producto existente |
+| Carrito | GET | /api/carrito | Lista los registros del carrito |
+| Carrito | GET | /api/carrito/{id} | Obtiene un item del carrito por ID |
+| Carrito | POST | /api/carrito | Agrega un item al carrito |
+| Carrito | PUT | /api/carrito/{id} | Actualiza un item del carrito |
+| Carrito | DELETE | /api/carrito/{id} | Elimina un item del carrito |
+
+## 7. Ejecucion del proyecto
+
+Para iniciar la aplicacion en entorno local:
+
+    .\mvnw.cmd spring-boot:run
+
+La aplicacion queda disponible en:
+
+    http://localhost:8080
+
+Con la aplicacion iniciada, se puede validar Swagger UI desde el navegador:
+
+    http://localhost:8080/swagger-ui.html
+
+## 8. Matriz resumida de permisos
 
 | Recurso | Cliente | Cajero / Empleado | Administrador / Gerente |
 |---|---:|---:|---:|
@@ -82,8 +145,9 @@ Authorization: Bearer <token>
 | Registrar inventario | No | Si | Si |
 | Generar ventas | No | Si | No |
 | Gestionar usuarios | No | No | Si |
+| Consultar documentacion Swagger/OpenAPI | Si | Si | Si |
 
-## 7. Pruebas implementadas
+## 9. Pruebas implementadas
 
 El proyecto cuenta con pruebas unitarias y pruebas de autorizacion.
 
@@ -93,7 +157,7 @@ Areas cubiertas:
 - Servicios: Carrito, Inventario, Usuario y Venta.
 - Seguridad: autenticacion, autorizacion por rol y proteccion de endpoints.
 
-Pruebas de seguridad agregadas:
+Pruebas de seguridad:
 
 - AuthProductoAuthorizationTest
 - InventarioAuthorizationTest
@@ -110,34 +174,33 @@ Casos validados:
 - Restriccion de inventario a cajero y administrador.
 - Restriccion de generacion de ventas solo a cajero.
 
-## 8. Ejecucion de pruebas
+## 10. Ejecucion de pruebas
 
 Para ejecutar todas las pruebas:
 
-mvn clean test
+    .\mvnw.cmd test
 
-Resultado validado:
+Para validar compilacion sin ejecutar pruebas:
 
-73 pruebas ejecutadas correctamente
-BUILD SUCCESS
+    .\mvnw.cmd -DskipTests compile
 
 Para ejecutar solo las pruebas de autorizacion:
 
-mvn clean "-Dtest=*AuthorizationTest" test
+    .\mvnw.cmd "-Dtest=*AuthorizationTest" test
 
-## 9. Reportes de pruebas
+## 11. Reportes de pruebas
 
 Los reportes de Surefire se generan en:
 
-target/surefire-reports
+    target/surefire-reports
 
 El reporte de cobertura JaCoCo se genera con:
 
-mvn jacoco:report
+    .\mvnw.cmd jacoco:report
 
 Ruta del reporte HTML:
 
-target/site/jacoco/index.html
+    target/site/jacoco/index.html
 
 Resultado de cobertura observado:
 
@@ -150,18 +213,25 @@ Resultado de cobertura observado:
 | Cobertura paquete security.jwt | 93% |
 | Cobertura paquete entity | 91% |
 
-## 10. Ajustes tecnicos realizados
+## 12. Caracteristicas tecnicas del sistema
 
-Durante la actividad se realizaron los siguientes ajustes:
+El backend cuenta con las siguientes caracteristicas tecnicas:
 
-1. Se ajustaron las reglas de seguridad por rol en SecurityConfig.
-2. Se restringio la modificacion de productos al rol administrador.
-3. Se restringio la generacion de ventas al rol cajero.
-4. Se agregaron pruebas automaticas de autenticacion y autorizacion con MockMvc.
-5. Se limpiaron clases vacias no utilizadas.
-6. Se agrego manejo transaccional al registro de ventas para asegurar consistencia al descontar stock y registrar la venta.
+- API REST desarrollada con Spring Boot.
+- Persistencia mediante Spring Data JPA.
+- Base de datos H2 para ejecucion local y pruebas.
+- Autenticacion stateless mediante JWT.
+- Autorizacion por roles funcionales del minimarket.
+- Proteccion de endpoints segun perfil de usuario.
+- Validacion de texto seguro en operaciones sensibles de productos.
+- Manejo personalizado de errores de autenticacion y acceso denegado.
+- Pruebas unitarias y pruebas de autorizacion con MockMvc.
+- Reporte de cobertura mediante JaCoCo.
+- Documentacion tecnica de endpoints mediante OpenAPI.
+- Interfaz interactiva Swagger UI para consulta y validacion de contratos REST.
+- Especificacion OpenAPI exportada en formato JSON.
 
-## 11. Mejoras propuestas
+## 13. Mejoras propuestas
 
 Como mejoras futuras se proponen:
 
@@ -171,3 +241,5 @@ Como mejoras futuras se proponen:
 - Incorporar alertas de stock minimo en inventario.
 - Centralizar respuestas de error mediante un manejador global.
 - Reforzar trazabilidad de eventos sensibles como login fallido y accesos denegados.
+- Ampliar la documentacion OpenAPI al resto de controladores del sistema.
+- Incorporar esquemas DTO especificos para mejorar la claridad de los contratos publicados en Swagger UI.
