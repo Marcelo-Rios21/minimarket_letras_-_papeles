@@ -1,6 +1,7 @@
 package com.minimarket.controller;
 
 import com.minimarket.entity.Carrito;
+import com.minimarket.hateoas.CarritoModelAssembler;
 import com.minimarket.service.CarritoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -12,13 +13,16 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("/api/carrito")
@@ -26,8 +30,16 @@ import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
 @SecurityRequirement(name = SECURITY_SCHEME_NAME)
 public class CarritoController {
 
-    @Autowired
-    private CarritoService carritoService;
+    private final CarritoService carritoService;
+    private final CarritoModelAssembler carritoModelAssembler;
+
+    public CarritoController(
+            CarritoService carritoService,
+            CarritoModelAssembler carritoModelAssembler
+    ) {
+        this.carritoService = carritoService;
+        this.carritoModelAssembler = carritoModelAssembler;
+    }
 
     @GetMapping
     @Operation(
@@ -46,8 +58,20 @@ public class CarritoController {
             @ApiResponse(responseCode = "401", description = "No autenticado.", content = @Content),
             @ApiResponse(responseCode = "403", description = "No autorizado para acceder al recurso.", content = @Content)
     })
-    public List<Carrito> listarCarrito() {
-        return carritoService.findAll();
+    public CollectionModel<EntityModel<Carrito>> listarCarrito() {
+        List<EntityModel<Carrito>> items =
+                carritoService.findAll()
+                        .stream()
+                        .map(carritoModelAssembler::toModel)
+                        .toList();
+
+        return CollectionModel.of(
+                items,
+                linkTo(
+                        methodOn(CarritoController.class)
+                                .listarCarrito()
+                ).withSelfRel()
+        );
     }
 
     @GetMapping("/{id}")
@@ -68,11 +92,18 @@ public class CarritoController {
             @ApiResponse(responseCode = "403", description = "No autorizado para acceder al recurso.", content = @Content),
             @ApiResponse(responseCode = "404", description = "Registro del carrito no encontrado.", content = @Content)
     })
-    public ResponseEntity<Carrito> obtenerCarritoPorId(
+    public ResponseEntity<EntityModel<Carrito>> obtenerCarritoPorId(
             @Parameter(description = "ID del registro del carrito que se desea consultar.", example = "1")
             @PathVariable Long id) {
         Carrito carrito = carritoService.findById(id);
-        return (carrito != null) ? ResponseEntity.ok(carrito) : ResponseEntity.notFound().build();
+
+        if (carrito == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(
+                carritoModelAssembler.toModel(carrito)
+        );
     }
 
     @PostMapping
@@ -109,8 +140,12 @@ public class CarritoController {
             @ApiResponse(responseCode = "401", description = "No autenticado.", content = @Content),
             @ApiResponse(responseCode = "403", description = "No autorizado para agregar items al carrito.", content = @Content)
     })
-    public Carrito agregarProductoAlCarrito(@RequestBody Carrito carrito) {
-        return carritoService.save(carrito);
+    public EntityModel<Carrito> agregarProductoAlCarrito(@RequestBody Carrito carrito) {
+        Carrito carritoGuardado = carritoService.save(carrito);
+
+        return carritoModelAssembler.toModel(
+                carritoGuardado
+        );
     }
 
     @PutMapping("/{id}")
@@ -148,16 +183,24 @@ public class CarritoController {
             @ApiResponse(responseCode = "403", description = "No autorizado para actualizar el carrito.", content = @Content),
             @ApiResponse(responseCode = "404", description = "Registro del carrito no encontrado.", content = @Content)
     })
-    public ResponseEntity<Carrito> actualizarCarrito(
+    public ResponseEntity<EntityModel<Carrito>> actualizarCarrito(
             @Parameter(description = "ID del registro del carrito que se desea actualizar.", example = "1")
             @PathVariable Long id,
             @RequestBody Carrito carrito) {
         Carrito existente = carritoService.findById(id);
-        if (existente != null) {
-            carrito.setId(id);
-            return ResponseEntity.ok(carritoService.save(carrito));
+
+        if (existente == null) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+
+        carrito.setId(id);
+        Carrito carritoActualizado = carritoService.save(carrito);
+
+        return ResponseEntity.ok(
+                carritoModelAssembler.toModel(
+                        carritoActualizado
+                )
+        );
     }
 
     @DeleteMapping("/{id}")

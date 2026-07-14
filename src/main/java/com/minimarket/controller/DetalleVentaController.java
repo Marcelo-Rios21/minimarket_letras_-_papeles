@@ -3,6 +3,7 @@ package com.minimarket.controller;
 import com.minimarket.dto.error.ApiErrorResponse;
 import com.minimarket.entity.DetalleVenta;
 import com.minimarket.exception.ResourceNotFoundException;
+import com.minimarket.hateoas.DetalleVentaModelAssembler;
 import com.minimarket.service.DetalleVentaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,6 +16,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -29,6 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("/api/detalle-ventas")
@@ -44,11 +49,15 @@ import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
 public class DetalleVentaController {
 
     private final DetalleVentaService detalleVentaService;
+    private final DetalleVentaModelAssembler detalleVentaModelAssembler;
 
     public DetalleVentaController(
-            DetalleVentaService detalleVentaService
+            DetalleVentaService detalleVentaService,
+            DetalleVentaModelAssembler detalleVentaModelAssembler
     ) {
         this.detalleVentaService = detalleVentaService;
+        this.detalleVentaModelAssembler =
+                detalleVentaModelAssembler;
     }
 
     @GetMapping
@@ -91,8 +100,22 @@ public class DetalleVentaController {
                     )
             )
     })
-    public List<DetalleVenta> listarDetalleVentas() {
-        return detalleVentaService.findAll();
+    public CollectionModel<EntityModel<DetalleVenta>>
+            listarDetalleVentas() {
+
+        List<EntityModel<DetalleVenta>> detalles =
+                detalleVentaService.findAll()
+                        .stream()
+                        .map(detalleVentaModelAssembler::toModel)
+                        .toList();
+
+        return CollectionModel.of(
+                detalles,
+                linkTo(
+                        methodOn(DetalleVentaController.class)
+                                .listarDetalleVentas()
+                ).withSelfRel()
+        );
     }
 
     @GetMapping("/{id}")
@@ -139,14 +162,21 @@ public class DetalleVentaController {
                     )
             )
     })
-    public ResponseEntity<DetalleVenta> obtenerDetalleVentaPorId(
+    public ResponseEntity<EntityModel<DetalleVenta>>
+            obtenerDetalleVentaPorId(
             @Parameter(
                     description = "Identificador del detalle.",
                     example = "1"
             )
             @PathVariable Long id
     ) {
-        return ResponseEntity.ok(buscarDetalle(id));
+        DetalleVenta detalle = buscarDetalle(id);
+
+        return ResponseEntity.ok(
+                detalleVentaModelAssembler.toModel(
+                        detalle
+                )
+        );
     }
 
     @PostMapping
@@ -229,11 +259,17 @@ public class DetalleVentaController {
                     )
             )
     })
-    public ResponseEntity<DetalleVenta> guardarDetalleVenta(
+    public ResponseEntity<EntityModel<DetalleVenta>>
+            guardarDetalleVenta(
             @Valid @RequestBody DetalleVenta detalleVenta
     ) {
+        DetalleVenta detalleGuardado =
+                detalleVentaService.save(detalleVenta);
+
         return ResponseEntity.ok(
-                detalleVentaService.save(detalleVenta)
+                detalleVentaModelAssembler.toModel(
+                        detalleGuardado
+                )
         );
     }
 
@@ -325,7 +361,8 @@ public class DetalleVentaController {
                     )
             )
     })
-    public ResponseEntity<DetalleVenta> actualizarDetalleVenta(
+    public ResponseEntity<EntityModel<DetalleVenta>>
+            actualizarDetalleVenta(
             @Parameter(
                     description = "Identificador del detalle.",
                     example = "1"
@@ -336,8 +373,13 @@ public class DetalleVentaController {
         buscarDetalle(id);
         detalleVenta.setId(id);
 
+        DetalleVenta detalleActualizado =
+                detalleVentaService.save(detalleVenta);
+
         return ResponseEntity.ok(
-                detalleVentaService.save(detalleVenta)
+                detalleVentaModelAssembler.toModel(
+                        detalleActualizado
+                )
         );
     }
 

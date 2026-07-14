@@ -3,6 +3,7 @@ package com.minimarket.controller;
 import com.minimarket.dto.error.ApiErrorResponse;
 import com.minimarket.entity.Categoria;
 import com.minimarket.exception.ResourceNotFoundException;
+import com.minimarket.hateoas.CategoriaModelAssembler;
 import com.minimarket.security.util.InputValidator;
 import com.minimarket.service.CategoriaService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,6 +17,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("/api/categorias")
@@ -45,9 +50,14 @@ import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
 public class CategoriaController {
 
     private final CategoriaService categoriaService;
+    private final CategoriaModelAssembler categoriaModelAssembler;
 
-    public CategoriaController(CategoriaService categoriaService) {
+    public CategoriaController(
+            CategoriaService categoriaService,
+            CategoriaModelAssembler categoriaModelAssembler
+    ) {
         this.categoriaService = categoriaService;
+        this.categoriaModelAssembler = categoriaModelAssembler;
     }
 
     @GetMapping
@@ -87,8 +97,20 @@ public class CategoriaController {
                     )
             )
     })
-    public List<Categoria> listarCategorias() {
-        return categoriaService.findAll();
+    public CollectionModel<EntityModel<Categoria>> listarCategorias() {
+        List<EntityModel<Categoria>> categorias =
+                categoriaService.findAll()
+                        .stream()
+                        .map(categoriaModelAssembler::toModel)
+                        .toList();
+
+        return CollectionModel.of(
+                categorias,
+                linkTo(
+                        methodOn(CategoriaController.class)
+                                .listarCategorias()
+                ).withSelfRel()
+        );
     }
 
     @GetMapping("/{id}")
@@ -135,7 +157,7 @@ public class CategoriaController {
                     )
             )
     })
-    public ResponseEntity<Categoria> obtenerCategoriaPorId(
+    public ResponseEntity<EntityModel<Categoria>> obtenerCategoriaPorId(
             @Parameter(
                     description = "Identificador de la categoría.",
                     example = "1"
@@ -143,7 +165,9 @@ public class CategoriaController {
             @PathVariable Long id
     ) {
         Categoria categoria = buscarCategoria(id);
-        return ResponseEntity.ok(categoria);
+        return ResponseEntity.ok(
+                categoriaModelAssembler.toModel(categoria)
+        );
     }
 
     @PostMapping
@@ -218,7 +242,7 @@ public class CategoriaController {
                     )
             )
     })
-    public ResponseEntity<Categoria> guardarCategoria(
+    public ResponseEntity<EntityModel<Categoria>> guardarCategoria(
             @Valid @RequestBody Categoria categoria
     ) {
         validarNombre(categoria);
@@ -227,7 +251,11 @@ public class CategoriaController {
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(categoriaGuardada);
+                .body(
+                        categoriaModelAssembler.toModel(
+                                categoriaGuardada
+                        )
+                );
     }
 
     @PutMapping("/{id}")
@@ -310,7 +338,7 @@ public class CategoriaController {
                     )
             )
     })
-    public ResponseEntity<Categoria> actualizarCategoria(
+    public ResponseEntity<EntityModel<Categoria>> actualizarCategoria(
             @Parameter(
                     description = "Identificador de la categoría.",
                     example = "1"
@@ -323,8 +351,13 @@ public class CategoriaController {
 
         categoria.setId(id);
 
+        Categoria categoriaActualizada =
+                categoriaService.save(categoria);
+
         return ResponseEntity.ok(
-                categoriaService.save(categoria)
+                categoriaModelAssembler.toModel(
+                        categoriaActualizada
+                )
         );
     }
 

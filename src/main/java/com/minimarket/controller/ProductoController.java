@@ -2,6 +2,7 @@ package com.minimarket.controller;
 
 import com.minimarket.entity.Producto;
 import com.minimarket.exception.ResourceNotFoundException;
+import com.minimarket.hateoas.ProductoModelAssembler;
 import com.minimarket.security.util.InputValidator;
 import com.minimarket.service.ProductoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,7 +16,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +25,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("/api/productos")
@@ -30,8 +34,16 @@ import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
 @SecurityRequirement(name = SECURITY_SCHEME_NAME)
 public class ProductoController {
 
-    @Autowired
-    private ProductoService productoService;
+    private final ProductoService productoService;
+    private final ProductoModelAssembler productoModelAssembler;
+
+    public ProductoController(
+            ProductoService productoService,
+            ProductoModelAssembler productoModelAssembler
+    ) {
+        this.productoService = productoService;
+        this.productoModelAssembler = productoModelAssembler;
+    }
 
     @GetMapping
     @Operation(
@@ -50,8 +62,20 @@ public class ProductoController {
             @ApiResponse(responseCode = "401", description = "No autenticado.", content = @Content),
             @ApiResponse(responseCode = "403", description = "No autorizado para acceder al recurso.", content = @Content)
     })
-    public List<Producto> listarProductos() {
-        return productoService.findAll();
+    public CollectionModel<EntityModel<Producto>> listarProductos() {
+        List<EntityModel<Producto>> productos =
+                productoService.findAll()
+                        .stream()
+                        .map(productoModelAssembler::toModel)
+                        .toList();
+
+        return CollectionModel.of(
+                productos,
+                linkTo(
+                        methodOn(ProductoController.class)
+                                .listarProductos()
+                ).withSelfRel()
+        );
     }
 
     @GetMapping("/{id}")
@@ -72,7 +96,7 @@ public class ProductoController {
             @ApiResponse(responseCode = "403", description = "No autorizado para acceder al recurso.", content = @Content),
             @ApiResponse(responseCode = "404", description = "Producto no encontrado.", content = @Content)
     })
-    public ResponseEntity<Producto> obtenerProductoPorId(
+    public ResponseEntity<EntityModel<Producto>> obtenerProductoPorId(
             @Parameter(description = "ID del producto que se desea consultar.", example = "1")
             @PathVariable Long id) {
         Producto producto = productoService.findById(id);
@@ -82,7 +106,9 @@ public class ProductoController {
             );
         }
 
-        return ResponseEntity.ok(producto);
+        return ResponseEntity.ok(
+                productoModelAssembler.toModel(producto)
+        );
     }
 
     @PostMapping
@@ -121,7 +147,7 @@ public class ProductoController {
             @ApiResponse(responseCode = "401", description = "No autenticado.", content = @Content),
             @ApiResponse(responseCode = "403", description = "No autorizado para crear productos.", content = @Content)
     })
-    public ResponseEntity<Producto> guardarProducto(
+    public ResponseEntity<EntityModel<Producto>> guardarProducto(
             @Valid @RequestBody Producto producto
     ) {
         InputValidator.validarTextoSeguro(producto.getNombre(), "nombre");
@@ -129,7 +155,11 @@ public class ProductoController {
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(productoGuardado);
+                .body(
+                        productoModelAssembler.toModel(
+                                productoGuardado
+                        )
+                );
     }
 
     @PutMapping("/{id}")
@@ -169,7 +199,7 @@ public class ProductoController {
             @ApiResponse(responseCode = "403", description = "No autorizado para actualizar productos.", content = @Content),
             @ApiResponse(responseCode = "404", description = "Producto no encontrado.", content = @Content)
     })
-    public ResponseEntity<Producto> actualizarProducto(
+    public ResponseEntity<EntityModel<Producto>> actualizarProducto(
             @Parameter(description = "ID del producto que se desea actualizar.", example = "1")
             @PathVariable Long id,
             @Valid @RequestBody Producto producto) {
@@ -183,7 +213,13 @@ public class ProductoController {
         producto.setId(id);
         InputValidator.validarTextoSeguro(producto.getNombre(), "nombre");
 
-        return ResponseEntity.ok(productoService.save(producto));
+        Producto productoActualizado = productoService.save(producto);
+
+        return ResponseEntity.ok(
+                productoModelAssembler.toModel(
+                        productoActualizado
+                )
+        );
     }
 
     @DeleteMapping("/{id}")

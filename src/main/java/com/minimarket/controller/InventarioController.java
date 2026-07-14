@@ -3,6 +3,7 @@ package com.minimarket.controller;
 import com.minimarket.dto.error.ApiErrorResponse;
 import com.minimarket.entity.Inventario;
 import com.minimarket.exception.ResourceNotFoundException;
+import com.minimarket.hateoas.InventarioModelAssembler;
 import com.minimarket.service.InventarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,6 +16,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +34,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("/api/inventario")
@@ -45,9 +50,14 @@ import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
 public class InventarioController {
 
     private final InventarioService inventarioService;
+    private final InventarioModelAssembler inventarioModelAssembler;
 
-    public InventarioController(InventarioService inventarioService) {
+    public InventarioController(
+            InventarioService inventarioService,
+            InventarioModelAssembler inventarioModelAssembler
+    ) {
         this.inventarioService = inventarioService;
+        this.inventarioModelAssembler = inventarioModelAssembler;
     }
 
     @GetMapping
@@ -87,8 +97,22 @@ public class InventarioController {
                     )
             )
     })
-    public List<Inventario> listarMovimientosDeInventario() {
-        return inventarioService.findAll();
+    public CollectionModel<EntityModel<Inventario>>
+            listarMovimientosDeInventario() {
+
+        List<EntityModel<Inventario>> movimientos =
+                inventarioService.findAll()
+                        .stream()
+                        .map(inventarioModelAssembler::toModel)
+                        .toList();
+
+        return CollectionModel.of(
+                movimientos,
+                linkTo(
+                        methodOn(InventarioController.class)
+                                .listarMovimientosDeInventario()
+                ).withSelfRel()
+        );
     }
 
     @GetMapping("/{id}")
@@ -135,14 +159,20 @@ public class InventarioController {
                     )
             )
     })
-    public ResponseEntity<Inventario> obtenerMovimientoPorId(
+    public ResponseEntity<EntityModel<Inventario>> obtenerMovimientoPorId(
             @Parameter(
                     description = "Identificador del movimiento.",
                     example = "1"
             )
             @PathVariable Long id
     ) {
-        return ResponseEntity.ok(buscarMovimiento(id));
+        Inventario movimiento = buscarMovimiento(id);
+
+        return ResponseEntity.ok(
+                inventarioModelAssembler.toModel(
+                        movimiento
+                )
+        );
     }
 
     @PostMapping
@@ -222,12 +252,16 @@ public class InventarioController {
                     )
             )
     })
-    public ResponseEntity<Inventario> registrarMovimiento(
+    public ResponseEntity<EntityModel<Inventario>> registrarMovimiento(
             @Valid @RequestBody Inventario inventario
     ) {
         Inventario movimientoGuardado = guardarMovimiento(inventario);
 
-        return ResponseEntity.ok(movimientoGuardado);
+        return ResponseEntity.ok(
+                inventarioModelAssembler.toModel(
+                        movimientoGuardado
+                )
+        );
     }
 
     @PutMapping("/{id}")
@@ -313,7 +347,7 @@ public class InventarioController {
                     )
             )
     })
-    public ResponseEntity<Inventario> actualizarMovimiento(
+    public ResponseEntity<EntityModel<Inventario>> actualizarMovimiento(
             @Parameter(
                     description = "Identificador del movimiento.",
                     example = "1"
@@ -324,8 +358,13 @@ public class InventarioController {
         buscarMovimiento(id);
         inventario.setId(id);
 
+        Inventario movimientoActualizado =
+                guardarMovimiento(inventario);
+
         return ResponseEntity.ok(
-                guardarMovimiento(inventario)
+                inventarioModelAssembler.toModel(
+                        movimientoActualizado
+                )
         );
     }
 

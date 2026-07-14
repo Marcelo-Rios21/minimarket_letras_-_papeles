@@ -3,6 +3,7 @@ package com.minimarket.controller;
 import com.minimarket.dto.error.ApiErrorResponse;
 import com.minimarket.entity.Venta;
 import com.minimarket.exception.ResourceNotFoundException;
+import com.minimarket.hateoas.VentaModelAssembler;
 import com.minimarket.service.VentaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,6 +16,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +32,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("/api/ventas")
@@ -43,9 +48,14 @@ import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
 public class VentaController {
 
     private final VentaService ventaService;
+    private final VentaModelAssembler ventaModelAssembler;
 
-    public VentaController(VentaService ventaService) {
+    public VentaController(
+            VentaService ventaService,
+            VentaModelAssembler ventaModelAssembler
+    ) {
         this.ventaService = ventaService;
+        this.ventaModelAssembler = ventaModelAssembler;
     }
 
     @GetMapping
@@ -88,8 +98,20 @@ public class VentaController {
                     )
             )
     })
-    public List<Venta> listarVentas() {
-        return ventaService.findAll();
+    public CollectionModel<EntityModel<Venta>> listarVentas() {
+        List<EntityModel<Venta>> ventas =
+                ventaService.findAll()
+                        .stream()
+                        .map(ventaModelAssembler::toModel)
+                        .toList();
+
+        return CollectionModel.of(
+                ventas,
+                linkTo(
+                        methodOn(VentaController.class)
+                                .listarVentas()
+                ).withSelfRel()
+        );
     }
 
     @GetMapping("/{id}")
@@ -139,7 +161,7 @@ public class VentaController {
                     )
             )
     })
-    public ResponseEntity<Venta> obtenerVentaPorId(
+    public ResponseEntity<EntityModel<Venta>> obtenerVentaPorId(
             @Parameter(
                     description = "Identificador de la venta.",
                     example = "1"
@@ -154,7 +176,9 @@ public class VentaController {
             );
         }
 
-        return ResponseEntity.ok(venta);
+        return ResponseEntity.ok(
+                ventaModelAssembler.toModel(venta)
+        );
     }
 
     @PostMapping
@@ -255,7 +279,7 @@ public class VentaController {
                     )
             )
     })
-    public ResponseEntity<Venta> guardarVenta(
+    public ResponseEntity<EntityModel<Venta>> guardarVenta(
             @Valid @RequestBody Venta venta
     ) {
         try {
@@ -263,7 +287,11 @@ public class VentaController {
 
             return ResponseEntity
                     .status(HttpStatus.CREATED)
-                    .body(ventaRegistrada);
+                    .body(
+                            ventaModelAssembler.toModel(
+                                    ventaRegistrada
+                            )
+                    );
         } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,

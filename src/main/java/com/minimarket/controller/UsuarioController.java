@@ -3,6 +3,7 @@ package com.minimarket.controller;
 import com.minimarket.dto.error.ApiErrorResponse;
 import com.minimarket.entity.Usuario;
 import com.minimarket.exception.ResourceNotFoundException;
+import com.minimarket.hateoas.UsuarioModelAssembler;
 import com.minimarket.service.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,6 +15,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -43,9 +48,14 @@ import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
+    private final UsuarioModelAssembler usuarioModelAssembler;
 
-    public UsuarioController(UsuarioService usuarioService) {
+    public UsuarioController(
+            UsuarioService usuarioService,
+            UsuarioModelAssembler usuarioModelAssembler
+    ) {
         this.usuarioService = usuarioService;
+        this.usuarioModelAssembler = usuarioModelAssembler;
     }
 
     @GetMapping
@@ -85,8 +95,20 @@ public class UsuarioController {
                     )
             )
     })
-    public List<Usuario> listarUsuarios() {
-        return usuarioService.findAll();
+    public CollectionModel<EntityModel<Usuario>> listarUsuarios() {
+        List<EntityModel<Usuario>> usuarios =
+                usuarioService.findAll()
+                        .stream()
+                        .map(usuarioModelAssembler::toModel)
+                        .toList();
+
+        return CollectionModel.of(
+                usuarios,
+                linkTo(
+                        methodOn(UsuarioController.class)
+                                .listarUsuarios()
+                ).withSelfRel()
+        );
     }
 
     @GetMapping("/{id}")
@@ -133,14 +155,18 @@ public class UsuarioController {
                     )
             )
     })
-    public ResponseEntity<Usuario> obtenerUsuarioPorId(
+    public ResponseEntity<EntityModel<Usuario>> obtenerUsuarioPorId(
             @Parameter(
                     description = "Identificador del usuario.",
                     example = "1"
             )
             @PathVariable Long id
     ) {
-        return ResponseEntity.ok(buscarUsuario(id));
+        Usuario usuario = buscarUsuario(id);
+
+        return ResponseEntity.ok(
+                usuarioModelAssembler.toModel(usuario)
+        );
     }
 
     @PostMapping
@@ -226,14 +252,18 @@ public class UsuarioController {
                     )
             )
     })
-    public ResponseEntity<Usuario> guardarUsuario(
+    public ResponseEntity<EntityModel<Usuario>> guardarUsuario(
             @RequestBody Usuario usuario
     ) {
         Usuario usuarioGuardado = usuarioService.save(usuario);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(usuarioGuardado);
+                .body(
+                        usuarioModelAssembler.toModel(
+                                usuarioGuardado
+                        )
+                );
     }
 
     @PutMapping("/{id}")
@@ -328,7 +358,7 @@ public class UsuarioController {
                     )
             )
     })
-    public ResponseEntity<Usuario> actualizarUsuario(
+    public ResponseEntity<EntityModel<Usuario>> actualizarUsuario(
             @Parameter(
                     description = "Identificador del usuario.",
                     example = "1"
@@ -339,8 +369,13 @@ public class UsuarioController {
         buscarUsuario(id);
         usuario.setId(id);
 
+        Usuario usuarioActualizado =
+                usuarioService.save(usuario);
+
         return ResponseEntity.ok(
-                usuarioService.save(usuario)
+                usuarioModelAssembler.toModel(
+                        usuarioActualizado
+                )
         );
     }
 
