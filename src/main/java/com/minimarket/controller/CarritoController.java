@@ -6,7 +6,6 @@ import com.minimarket.service.CarritoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -52,7 +51,9 @@ public class CarritoController {
                     description = "Listado del carrito obtenido correctamente.",
                     content = @Content(
                             mediaType = "application/json",
-                            array = @ArraySchema(schema = @Schema(implementation = Carrito.class))
+                            schema = @Schema(
+                                    implementation = CollectionModel.class
+                            )
                     )
             ),
             @ApiResponse(responseCode = "401", description = "No autenticado.", content = @Content),
@@ -85,7 +86,12 @@ public class CarritoController {
                     description = "Registro del carrito encontrado correctamente.",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Carrito.class)
+                            schema = @Schema(
+                                    allOf = {
+                                            Carrito.class,
+                                            EntityModel.class
+                                    }
+                            )
                     )
             ),
             @ApiResponse(responseCode = "401", description = "No autenticado.", content = @Content),
@@ -133,7 +139,12 @@ public class CarritoController {
                     description = "Item agregado al carrito correctamente.",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Carrito.class)
+                            schema = @Schema(
+                                    allOf = {
+                                            Carrito.class,
+                                            EntityModel.class
+                                    }
+                            )
                     )
             ),
             @ApiResponse(responseCode = "400", description = "Solicitud invalida.", content = @Content),
@@ -175,7 +186,12 @@ public class CarritoController {
                     description = "Item del carrito actualizado correctamente.",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Carrito.class)
+                            schema = @Schema(
+                                    allOf = {
+                                            Carrito.class,
+                                            EntityModel.class
+                                    }
+                            )
                     )
             ),
             @ApiResponse(responseCode = "400", description = "Solicitud invalida.", content = @Content),

@@ -8,7 +8,6 @@ import com.minimarket.security.util.InputValidator;
 import com.minimarket.service.CategoriaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -71,10 +70,8 @@ public class CategoriaController {
                     description = "Categorías obtenidas correctamente.",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            array = @ArraySchema(
-                                    schema = @Schema(
-                                            implementation = Categoria.class
-                                    )
+                            schema = @Schema(
+                                    implementation = CollectionModel.class
                             )
                     )
             ),
@@ -125,7 +122,10 @@ public class CategoriaController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
-                                    implementation = Categoria.class
+                                    allOf = {
+                                            Categoria.class,
+                                            EntityModel.class
+                                    }
                             )
                     )
             ),
@@ -201,7 +201,10 @@ public class CategoriaController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
-                                    implementation = Categoria.class
+                                    allOf = {
+                                            Categoria.class,
+                                            EntityModel.class
+                                    }
                             )
                     )
             ),
@@ -288,7 +291,10 @@ public class CategoriaController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
-                                    implementation = Categoria.class
+                                    allOf = {
+                                            Categoria.class,
+                                            EntityModel.class
+                                    }
                             )
                     )
             ),

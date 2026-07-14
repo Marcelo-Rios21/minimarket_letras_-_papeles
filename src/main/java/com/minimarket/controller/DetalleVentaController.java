@@ -7,7 +7,6 @@ import com.minimarket.hateoas.DetalleVentaModelAssembler;
 import com.minimarket.service.DetalleVentaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -74,10 +73,8 @@ public class DetalleVentaController {
                     description = "Detalles obtenidos correctamente.",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            array = @ArraySchema(
-                                    schema = @Schema(
-                                            implementation = DetalleVenta.class
-                                    )
+                            schema = @Schema(
+                                    implementation = CollectionModel.class
                             )
                     )
             ),
@@ -130,7 +127,10 @@ public class DetalleVentaController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
-                                    implementation = DetalleVenta.class
+                                    allOf = {
+                                            DetalleVenta.class,
+                                            EntityModel.class
+                                    }
                             )
                     )
             ),
@@ -218,7 +218,10 @@ public class DetalleVentaController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
-                                    implementation = DetalleVenta.class
+                                    allOf = {
+                                            DetalleVenta.class,
+                                            EntityModel.class
+                                    }
                             )
                     )
             ),
@@ -311,7 +314,10 @@ public class DetalleVentaController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
-                                    implementation = DetalleVenta.class
+                                    allOf = {
+                                            DetalleVenta.class,
+                                            EntityModel.class
+                                    }
                             )
                     )
             ),

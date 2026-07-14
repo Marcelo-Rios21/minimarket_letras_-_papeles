@@ -8,7 +8,6 @@ import com.minimarket.service.ProductoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -53,10 +52,12 @@ public class ProductoController {
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "Lista de productos obtenida correctamente.",
+                    description = "Lista HATEOAS de productos obtenida correctamente.",
                     content = @Content(
                             mediaType = "application/json",
-                            array = @ArraySchema(schema = @Schema(implementation = Producto.class))
+                            schema = @Schema(
+                                    implementation = CollectionModel.class
+                            )
                     )
             ),
             @ApiResponse(responseCode = "401", description = "No autenticado.", content = @Content),
@@ -86,10 +87,15 @@ public class ProductoController {
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "Producto encontrado correctamente.",
+                    description = "Producto encontrado con enlaces HATEOAS.",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Producto.class)
+                            schema = @Schema(
+                                    allOf = {
+                                            Producto.class,
+                                            EntityModel.class
+                                    }
+                            )
                     )
             ),
             @ApiResponse(responseCode = "401", description = "No autenticado.", content = @Content),
@@ -137,10 +143,15 @@ public class ProductoController {
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "201",
-                    description = "Producto creado correctamente.",
+                    description = "Producto creado con enlaces HATEOAS.",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Producto.class)
+                            schema = @Schema(
+                                    allOf = {
+                                            Producto.class,
+                                            EntityModel.class
+                                    }
+                            )
                     )
             ),
             @ApiResponse(responseCode = "400", description = "Solicitud invalida o datos no seguros.", content = @Content),
@@ -188,10 +199,15 @@ public class ProductoController {
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "Producto actualizado correctamente.",
+                    description = "Producto actualizado con enlaces HATEOAS.",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = Producto.class)
+                            schema = @Schema(
+                                    allOf = {
+                                            Producto.class,
+                                            EntityModel.class
+                                    }
+                            )
                     )
             ),
             @ApiResponse(responseCode = "400", description = "Solicitud invalida o datos no seguros.", content = @Content),

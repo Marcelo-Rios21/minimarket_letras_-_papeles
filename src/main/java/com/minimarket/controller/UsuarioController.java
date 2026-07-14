@@ -7,7 +7,6 @@ import com.minimarket.hateoas.UsuarioModelAssembler;
 import com.minimarket.service.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -69,10 +68,8 @@ public class UsuarioController {
                     description = "Usuarios obtenidos correctamente.",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            array = @ArraySchema(
-                                    schema = @Schema(
-                                            implementation = Usuario.class
-                                    )
+                            schema = @Schema(
+                                    implementation = CollectionModel.class
                             )
                     )
             ),
@@ -123,7 +120,10 @@ public class UsuarioController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
-                                    implementation = Usuario.class
+                                    allOf = {
+                                            Usuario.class,
+                                            EntityModel.class
+                                    }
                             )
                     )
             ),
@@ -211,7 +211,10 @@ public class UsuarioController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
-                                    implementation = Usuario.class
+                                    allOf = {
+                                            Usuario.class,
+                                            EntityModel.class
+                                    }
                             )
                     )
             ),
@@ -308,7 +311,10 @@ public class UsuarioController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
-                                    implementation = Usuario.class
+                                    allOf = {
+                                            Usuario.class,
+                                            EntityModel.class
+                                    }
                             )
                     )
             ),

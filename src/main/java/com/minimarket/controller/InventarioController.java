@@ -7,7 +7,6 @@ import com.minimarket.hateoas.InventarioModelAssembler;
 import com.minimarket.service.InventarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -71,10 +70,8 @@ public class InventarioController {
                     description = "Movimientos obtenidos correctamente.",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            array = @ArraySchema(
-                                    schema = @Schema(
-                                            implementation = Inventario.class
-                                    )
+                            schema = @Schema(
+                                    implementation = CollectionModel.class
                             )
                     )
             ),
@@ -127,7 +124,10 @@ public class InventarioController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
-                                    implementation = Inventario.class
+                                    allOf = {
+                                            Inventario.class,
+                                            EntityModel.class
+                                    }
                             )
                     )
             ),
@@ -211,7 +211,10 @@ public class InventarioController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
-                                    implementation = Inventario.class
+                                    allOf = {
+                                            Inventario.class,
+                                            EntityModel.class
+                                    }
                             )
                     )
             ),
@@ -297,7 +300,10 @@ public class InventarioController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(
-                                    implementation = Inventario.class
+                                    allOf = {
+                                            Inventario.class,
+                                            EntityModel.class
+                                    }
                             )
                     )
             ),
