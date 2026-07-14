@@ -5,6 +5,7 @@ import com.minimarket.exception.ResourceNotFoundException;
 import com.minimarket.security.util.InputValidator;
 import com.minimarket.service.ProductoService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -21,9 +22,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
+
 @RestController
 @RequestMapping("/api/productos")
 @Tag(name = "Productos", description = "Operaciones REST para consultar, crear, actualizar y eliminar productos del minimarket.")
+@SecurityRequirement(name = SECURITY_SCHEME_NAME)
 public class ProductoController {
 
     @Autowired

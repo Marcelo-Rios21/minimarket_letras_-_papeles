@@ -3,6 +3,7 @@ package com.minimarket.controller;
 import com.minimarket.entity.Carrito;
 import com.minimarket.service.CarritoService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,9 +18,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static com.minimarket.config.OpenApiConfig.SECURITY_SCHEME_NAME;
+
 @RestController
 @RequestMapping("/api/carrito")
 @Tag(name = "Carrito", description = "Operaciones REST para consultar, agregar, actualizar y eliminar productos del carrito.")
+@SecurityRequirement(name = SECURITY_SCHEME_NAME)
 public class CarritoController {
 
     @Autowired
