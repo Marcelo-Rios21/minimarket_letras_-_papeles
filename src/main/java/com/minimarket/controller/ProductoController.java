@@ -1,6 +1,7 @@
 package com.minimarket.controller;
 
 import com.minimarket.entity.Producto;
+import com.minimarket.exception.ResourceNotFoundException;
 import com.minimarket.security.util.InputValidator;
 import com.minimarket.service.ProductoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,7 +13,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -69,7 +72,13 @@ public class ProductoController {
             @Parameter(description = "ID del producto que se desea consultar.", example = "1")
             @PathVariable Long id) {
         Producto producto = productoService.findById(id);
-        return (producto != null) ? ResponseEntity.ok(producto) : ResponseEntity.notFound().build();
+        if (producto == null) {
+            throw new ResourceNotFoundException(
+                    "No existe un producto con ID " + id
+            );
+        }
+
+        return ResponseEntity.ok(producto);
     }
 
     @PostMapping
@@ -97,7 +106,7 @@ public class ProductoController {
     )
     @ApiResponses(value = {
             @ApiResponse(
-                    responseCode = "200",
+                    responseCode = "201",
                     description = "Producto creado correctamente.",
                     content = @Content(
                             mediaType = "application/json",
@@ -108,9 +117,15 @@ public class ProductoController {
             @ApiResponse(responseCode = "401", description = "No autenticado.", content = @Content),
             @ApiResponse(responseCode = "403", description = "No autorizado para crear productos.", content = @Content)
     })
-    public Producto guardarProducto(@RequestBody Producto producto) {
+    public ResponseEntity<Producto> guardarProducto(
+            @Valid @RequestBody Producto producto
+    ) {
         InputValidator.validarTextoSeguro(producto.getNombre(), "nombre");
-        return productoService.save(producto);
+        Producto productoGuardado = productoService.save(producto);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(productoGuardado);
     }
 
     @PutMapping("/{id}")
@@ -153,14 +168,18 @@ public class ProductoController {
     public ResponseEntity<Producto> actualizarProducto(
             @Parameter(description = "ID del producto que se desea actualizar.", example = "1")
             @PathVariable Long id,
-            @RequestBody Producto producto) {
+            @Valid @RequestBody Producto producto) {
         Producto productoExistente = productoService.findById(id);
-        if (productoExistente != null) {
-            producto.setId(id);
-            InputValidator.validarTextoSeguro(producto.getNombre(), "nombre");
-            return ResponseEntity.ok(productoService.save(producto));
+        if (productoExistente == null) {
+            throw new ResourceNotFoundException(
+                    "No existe un producto con ID " + id
+            );
         }
-        return ResponseEntity.notFound().build();
+
+        producto.setId(id);
+        InputValidator.validarTextoSeguro(producto.getNombre(), "nombre");
+
+        return ResponseEntity.ok(productoService.save(producto));
     }
 
     @DeleteMapping("/{id}")
@@ -178,10 +197,13 @@ public class ProductoController {
             @Parameter(description = "ID del producto que se desea eliminar.", example = "1")
             @PathVariable Long id) {
         Producto producto = productoService.findById(id);
-        if (producto != null) {
-            productoService.deleteById(id);
-            return ResponseEntity.noContent().build();
+        if (producto == null) {
+            throw new ResourceNotFoundException(
+                    "No existe un producto con ID " + id
+            );
         }
-        return ResponseEntity.notFound().build();
+
+        productoService.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }
