@@ -10,6 +10,8 @@ Backend desarrollado en Spring Boot para el sistema MiniMarket Plus, orientado a
 - Spring Data JPA
 - Spring Security
 - JWT
+- Spring HATEOAS
+- Jakarta Bean Validation
 - H2 Database
 - Maven
 - JUnit 5
@@ -25,13 +27,17 @@ src/main/java/com/minimarket
 
 - config
 - controller
+- dto
 - entity
+- exception
+- hateoas
 - repository
 - security
 - service
 
 src/test/java/com/minimarket
 
+- controller
 - entity
 - security
 - service
@@ -41,7 +47,7 @@ docs
 - analisis-seguridad.md
 - pruebas-seguridad.md
 - testing-unitario.md
-- openapi-minimarket-plus.json
+- openapi.json
 
 ## 3. Roles del sistema
 
@@ -88,7 +94,7 @@ El backend utiliza springdoc-openapi para generar documentacion tecnica de los e
 
 Con la aplicacion ejecutandose, se puede acceder a la interfaz interactiva de Swagger UI en:
 
-    http://localhost:8080/swagger-ui.html
+    http://localhost:8080/swagger-ui/index.html
 
 La especificacion OpenAPI en formato JSON se encuentra disponible en:
 
@@ -96,16 +102,29 @@ La especificacion OpenAPI en formato JSON se encuentra disponible en:
 
 Ademas, la especificacion exportada se mantiene en el proyecto en la siguiente ruta:
 
-    docs/openapi-minimarket-plus.json
+    docs/openapi.json
 
 La documentacion OpenAPI incluye descripciones de operaciones, parametros, codigos de respuesta y ejemplos de cuerpos JSON para los controladores documentados.
 
-Controladores documentados con mayor detalle:
+Las respuestas de los recursos incorporan Spring HATEOAS:
 
+- EntityModel para recursos individuales.
+- CollectionModel para listados.
+- Enlaces dinamicos generados mediante linkTo(methodOn(...)).
+- Propiedades _links y _embedded para navegar entre recursos.
+
+Controladores documentados:
+
+- AuthController
 - ProductoController
+- CategoriaController
 - CarritoController
+- UsuarioController
+- InventarioController
+- VentaController
+- DetalleVentaController
 
-Endpoints principales documentados:
+Endpoints representativos documentados:
 
 | Recurso | Metodo | Ruta | Descripcion |
 |---|---|---|---|
@@ -132,7 +151,7 @@ La aplicacion queda disponible en:
 
 Con la aplicacion iniciada, se puede validar Swagger UI desde el navegador:
 
-    http://localhost:8080/swagger-ui.html
+    http://localhost:8080/swagger-ui/index.html
 
 ## 8. Matriz resumida de permisos
 
@@ -156,12 +175,16 @@ Areas cubiertas:
 - Entidades: Producto, Carrito e Inventario.
 - Servicios: Carrito, Inventario, Usuario y Venta.
 - Seguridad: autenticacion, autorizacion por rol y proteccion de endpoints.
+- Controladores: validaciones, codigos HTTP y manejo global de errores.
+- HATEOAS: enlaces _links y colecciones _embedded.
 
 Pruebas de seguridad:
 
 - AuthProductoAuthorizationTest
 - InventarioAuthorizationTest
 - VentaAuthorizationTest
+- ProductoControllerValidationTest
+- HateoasIntegrationTest
 
 Casos validados:
 
@@ -223,11 +246,12 @@ El backend cuenta con las siguientes caracteristicas tecnicas:
 - Autenticacion stateless mediante JWT.
 - Autorizacion por roles funcionales del minimarket.
 - Proteccion de endpoints segun perfil de usuario.
-- Validacion de texto seguro en operaciones sensibles de productos.
-- Manejo personalizado de errores de autenticacion y acceso denegado.
+- Validacion de datos mediante Jakarta Bean Validation y texto seguro.
+- Manejo global y estandarizado de errores, autenticacion y acceso denegado.
 - Pruebas unitarias y pruebas de autorizacion con MockMvc.
 - Reporte de cobertura mediante JaCoCo.
-- Documentacion tecnica de endpoints mediante OpenAPI.
+- Respuestas HATEOAS con EntityModel, CollectionModel y enlaces dinamicos.
+- Documentacion tecnica de endpoints mediante OpenAPI 3.1.
 - Interfaz interactiva Swagger UI para consulta y validacion de contratos REST.
 - Especificacion OpenAPI exportada en formato JSON.
 
@@ -239,7 +263,5 @@ Como mejoras futuras se proponen:
 - Agregar control de propiedad para que un cliente solo acceda a sus propios carritos o ventas.
 - Ampliar pruebas MockMvc para todos los controladores.
 - Incorporar alertas de stock minimo en inventario.
-- Centralizar respuestas de error mediante un manejador global.
 - Reforzar trazabilidad de eventos sensibles como login fallido y accesos denegados.
-- Ampliar la documentacion OpenAPI al resto de controladores del sistema.
 - Incorporar esquemas DTO especificos para mejorar la claridad de los contratos publicados en Swagger UI.
